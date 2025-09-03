@@ -1,0 +1,111 @@
+import React from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  LayoutDashboard,
+  Package,
+  ContactRound,
+  Menu,
+  LogOut,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+interface AdminSidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+const navigation = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Applications", href: "/applications", icon: Package },
+  { name: "Contact Us", href: "/contactus", icon: ContactRound },
+];
+
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
+  const location = useLocation();
+  const { logout, user } = useAuth();
+
+  return (
+    <motion.div
+      initial={false}
+      animate={{ width: collapsed ? 70 : 260 }}
+      transition={{ duration: 0.35, ease: "easeInOut" }}
+      className="fixed left-4 top-4  h-[calc(100%-2rem)] bg-white/70 dark:bg-gray-900/80 
+                 backdrop-blur-lg border border-gray-200/40 dark:border-gray-700/50 
+                 rounded-2xl shadow-2xl z-40 flex flex-col"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200/40 dark:border-gray-700/40">
+        {!collapsed && (
+          <div className="flex items-center space-x-2">
+            <img src="/Images/CompanyLogo.jpeg" alt="Logo" className="w-10 h-10 rounded-full" />
+            <span className="font-semibold text-gray-900 dark:text-gray-100">Borrowly Admin</span>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggle}
+          className="hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded-full"
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-5 space-y-2">
+        {navigation.map((item) => {
+          const isActive = location.pathname === item.href;
+
+          return (
+            <Tooltip key={item.name}>
+              <TooltipTrigger asChild>
+                <NavLink
+                  to={item.href}
+                  className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+                    transition-all duration-200 group
+                    ${
+                      isActive
+                        ? "bg-gradient-to-br from-blue-600  to-[#0f77d2] text-white shadow-md"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                    }`}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.15, rotate: 5 }}
+                    className="flex-shrink-0"
+                  >
+                    <item.icon className="w-5 h-5" />
+                  </motion.div>
+                  {!collapsed && <span>{item.name}</span>}
+                </NavLink>
+              </TooltipTrigger>
+              {collapsed && <TooltipContent>{item.name}</TooltipContent>}
+            </Tooltip>
+          );
+        })}
+      </nav>
+
+      {/* User Section */}
+      <div className="p-4 border-t border-gray-200/40 dark:border-gray-700/40">
+        {!collapsed && user && (
+          <div className="mb-3 p-3 bg-gray-100/60 dark:bg-gray-800/70 rounded-xl">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+          </div>
+        )}
+        <Button
+          onClick={logout}
+          variant="ghost"
+          className={`w-full justify-start text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 ${
+            collapsed ? "px-2" : ""
+          }`}
+        >
+          <LogOut className="w-5 h-5" />
+          {!collapsed && <span className="ml-3">Logout</span>}
+        </Button>
+      </div>
+    </motion.div>
+  );
+};
