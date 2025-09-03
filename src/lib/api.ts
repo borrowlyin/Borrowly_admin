@@ -1,5 +1,5 @@
 // API configuration for admin panel
-export const API_BASE_URL = "http://192.168.1.34:8000";
+export const API_BASE_URL = "https://borrowly-backend-1.onrender.com";
 
 // Helper function to build API URLs
 export const buildApiUrl = (endpoint: string): string => {
