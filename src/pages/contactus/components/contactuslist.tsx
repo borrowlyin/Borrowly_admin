@@ -36,30 +36,66 @@ const Contactuslist: React.FC = () => {
   const { toast } = useToast();
 
   const fetchContacts = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("page", String(page));
-      params.append("limit", String(limit));
-      if (search) params.append("search", search);
-      if (statusFilter !== "all") params.append("status", statusFilter);
+  setLoading(true);
+  try {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+    params.append("limit", String(limit));
+    if (search) params.append("search", search);
+    if (statusFilter !== "all") params.append("status", statusFilter);
 
-     const res = await fetch(`${API_BASE_URL}/api/contact-us?${params.toString()}`);
+    const res = await fetch(`${API_BASE_URL}/api/contact-us?${params.toString()}`);
 
-      const data = await res.json();
-
-      setContacts(data.data || []);
-      setTotal(data.total || 0);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch contact messages.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    // If HTTP status not ok, read text for debugging and throw
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error("fetchContacts non-OK:", res.status, res.statusText, txt);
+      throw new Error(`Server returned ${res.status}`);
     }
-  };
+
+    const data = await res.json().catch((e) => {
+      console.error("Failed to parse JSON:", e);
+      return null;
+    });
+
+    console.log("fetchContacts API response:", data);
+
+    // Accept multiple shapes: raw array, { data: [...] }, { items: [...] }, { result: [...] }
+    let items: any[] = [];
+    let totalCount = 0;
+
+    if (Array.isArray(data)) {
+      items = data;
+      totalCount = data.length;
+    } else if (data && Array.isArray(data.data)) {
+      items = data.data;
+      totalCount = Number(data.total ?? items.length) || 0;
+    } else if (data && Array.isArray(data.items)) {
+      items = data.items;
+      totalCount = Number(data.total ?? items.length) || 0;
+    } else if (data && Array.isArray(data.result)) {
+      items = data.result;
+      totalCount = Number(data.total ?? items.length) || 0;
+    } else {
+      console.warn("Unexpected response shape for contact-us:", data);
+      items = [];
+      totalCount = 0;
+    }
+
+    setContacts(items);
+    setTotal(totalCount);
+  } catch (error) {
+    console.error("fetchContacts error:", error);
+    toast({
+      title: "Error",
+      description: "Failed to fetch contact messages. Check console/network for details.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchContacts();

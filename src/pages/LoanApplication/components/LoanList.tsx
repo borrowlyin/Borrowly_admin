@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { API_BASE_URL } from "@/lib/api";
+
+
+const API_BASE_URL = "https://borrowly-backend-696063357505.europe-west1.run.app"
 
 interface LoanApplication {
   id: number;
@@ -43,32 +45,64 @@ const LoanList: React.FC = () => {
   const [newStatus, setNewStatus] = useState<string>("");
   const [reason, setReason] = useState<string>("");
 
-  const fetchLoans = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("page", String(page));
-      params.append("limit", String(limit));
-      if (search) params.append("search", search);
-      if (statusFilter !== "all") params.append("status", statusFilter);
-      if (loanTypeFilter !== "all") params.append("loanType", loanTypeFilter);
+const fetchLoans = async () => {
+  setLoading(true);
+  try {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+    params.append("limit", String(limit));
+    if (search) params.append("search", search);
+    if (statusFilter !== "all") params.append("status", statusFilter);
+    if (loanTypeFilter !== "all") params.append("loanType", loanTypeFilter);
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/loan-applications?${params.toString()}`
-      );
-      const data = await res.json();
-      setLoans(data.data || []);
-      setTotal(data.total || 0);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch loan applications.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    const res = await fetch(`${API_BASE_URL}/api/loan-applications?${params.toString()}`);
+
+    // Check HTTP status
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("Fetch error:", res.status, res.statusText, text);
+      throw new Error(`Server returned ${res.status}`);
     }
-  };
+
+    const data = await res.json();
+    console.log("API response:", data);
+
+    // Try multiple shapes for the returned data
+    let items: any[] = [];
+    let totalCount = 0;
+    if (Array.isArray(data)) {
+      items = data;
+      totalCount = data.length;
+    } else if (Array.isArray(data.data)) {
+      items = data.data;
+      totalCount = data.total ?? items.length;
+    } else if (Array.isArray(data.items)) {
+      items = data.items;
+      totalCount = data.total ?? items.length;
+    } else if (Array.isArray(data.result)) {
+      items = data.result;
+      totalCount = data.total ?? items.length;
+    } else {
+      // fallback: maybe data.payload or nested object
+      console.warn("Unexpected response shape, using empty array", data);
+      items = [];
+      totalCount = 0;
+    }
+
+    setLoans(items as LoanApplication[]);
+    setTotal(Number(totalCount) || 0);
+  } catch (error) {
+    console.error("fetchLoans error:", error);
+    toast({
+      title: "Error",
+      description: "Failed to fetch loan applications. Check console for details.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchLoans();

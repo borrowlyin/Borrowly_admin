@@ -69,7 +69,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ filter }) => {
           trend: (data.loan_enquiries?.monthly_change || "").includes("-")
             ? "down"
             : "up",
-          route: "/admin/loan-enquiries",
+          route: "/applications",
         },
         {
           title: "Contact Messages",
@@ -78,7 +78,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ filter }) => {
           trend: (data.contact_messages?.monthly_change || "").includes("-")
             ? "down"
             : "up",
-          route: "/admin/contact-messages",
+          route: "/contactus",
         },
       ];
 

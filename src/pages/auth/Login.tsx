@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+import { API_BASE_URL } from "@/lib/api";
 export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,7 +37,7 @@ export const Login: React.FC = () => {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState("");
   const [forgotSuccess, setForgotSuccess] = useState("");
-  const baseUrl = import.meta.env.VITE_API_URL;
+  const baseUrl = API_BASE_URL;
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
