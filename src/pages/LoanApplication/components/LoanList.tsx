@@ -11,12 +11,9 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-
-const API_BASE_URL = "https://borrowly-backend-696063357505.europe-west1.run.app"
-
+import { API_BASE_URL, API_ENDPOINTS } from "@/lib/api";
 interface LoanApplication {
-  id: number;
+  id: string;
   full_name: string;
   email_address: string;
   contact_number: string;
@@ -24,11 +21,11 @@ interface LoanApplication {
   status: string;
   status_reason?: string;
   created_at: string;
-  modified_status_time?: string;
 }
 
 const LoanList: React.FC = () => {
-  const [loans, setLoans] = useState<LoanApplication[]>([]);
+  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
+  const [filteredLoans, setFilteredLoans] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -41,126 +38,199 @@ const LoanList: React.FC = () => {
 
   // Modal states
   const [showReasonModal, setShowReasonModal] = useState(false);
-  const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
+  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+  const [selectedLoanType, setSelectedLoanType] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState<string>("");
   const [reason, setReason] = useState<string>("");
 
-const fetchLoans = async () => {
-  setLoading(true);
-  try {
-    const params = new URLSearchParams();
-    params.append("page", String(page));
-    params.append("limit", String(limit));
-    if (search) params.append("search", search);
-    if (statusFilter !== "all") params.append("status", statusFilter);
-    if (loanTypeFilter !== "all") params.append("loanType", loanTypeFilter);
-
-    const res = await fetch(`${API_BASE_URL}/api/loan-applications?${params.toString()}`);
-
-    // Check HTTP status
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("Fetch error:", res.status, res.statusText, text);
-      throw new Error(`Server returned ${res.status}`);
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "approved":
+        return "text-green-600 font-semibold";
+      case "pending":
+        return "text-orange-500 font-semibold";
+      case "rejected":
+      case "cancel":
+        return "text-red-600 font-semibold";
+      default:
+        return "text-gray-700";
     }
+  };
 
-    const data = await res.json();
-    console.log("API response:", data);
 
-    // Try multiple shapes for the returned data
-    let items: any[] = [];
-    let totalCount = 0;
-    if (Array.isArray(data)) {
-      items = data;
-      totalCount = data.length;
-    } else if (Array.isArray(data.data)) {
-      items = data.data;
-      totalCount = data.total ?? items.length;
-    } else if (Array.isArray(data.items)) {
-      items = data.items;
-      totalCount = data.total ?? items.length;
-    } else if (Array.isArray(data.result)) {
-      items = data.result;
-      totalCount = data.total ?? items.length;
-    } else {
-      // fallback: maybe data.payload or nested object
-      console.warn("Unexpected response shape, using empty array", data);
-      items = [];
-      totalCount = 0;
+  const fetchLoans = async () => {
+    setLoading(true);
+
+    const loanTables = [
+      "personal_loans",
+      "home_loans",
+      "business_loans",
+      "gold_loans",
+      "education_loans",
+      "vehicle_loans",
+      "insurance_loans",
+    ];
+
+    try {
+      const allLoansFetched: LoanApplication[] = [];
+
+      for (const table of loanTables) {
+        const response = await fetch(
+          `${API_BASE_URL}/api/loans/getallloans?table=${table}&page=1&limit=1000`
+        );
+
+        if (!response.ok) throw new Error(`Failed to fetch ${table}`);
+
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.data)) {
+          const typeName = table
+            .replace("_loans", " Loan")
+            .replace("_", " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+
+          result.data.forEach((loan: any) => {
+            allLoansFetched.push({
+              id: loan.id,
+              full_name:
+                loan.full_name || loan.name || loan.studentfullname || loan.fullname || "",
+              email_address: loan.email || loan.email_address || "",
+              contact_number: loan.mobile || loan.phone || "",
+              loan_type: typeName,
+              status: loan.status ? loan.status.toLowerCase() : "pending",
+              status_reason: loan.reason || loan.status_reason || "",
+              created_at:
+                loan.created_at || loan.createdAt || loan.createdat || "",
+            });
+          });
+        }
+      }
+      allLoansFetched.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setAllLoans(allLoansFetched);
+      setFilteredLoans(allLoansFetched);
+      setTotal(allLoansFetched.length);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch loan data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setLoans(items as LoanApplication[]);
-    setTotal(Number(totalCount) || 0);
-  } catch (error) {
-    console.error("fetchLoans error:", error);
-    toast({
-      title: "Error",
-      description: "Failed to fetch loan applications. Check console for details.",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   useEffect(() => {
     fetchLoans();
-  }, [page, search, statusFilter, loanTypeFilter]);
+  }, []);
 
-  const updateStatus = async (
-    id: number,
-    status: string,
-    status_reason?: string
-  ) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/loan-applications/${id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, status_reason }),
-      });
-      if (!res.ok) throw new Error("Failed to update status");
-      const updated = await res.json();
-      setLoans((prev) =>
-        prev.map((loan) => (loan.id === id ? { ...loan, ...updated } : loan))
+  useEffect(() => {
+    let filtered = [...allLoans];
+
+    if (search.trim()) {
+      filtered = filtered.filter(
+        (loan) =>
+          loan.full_name.toLowerCase().includes(search.toLowerCase()) ||
+          loan.email_address.toLowerCase().includes(search.toLowerCase()) ||
+          loan.contact_number.includes(search)
       );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    if (loanTypeFilter !== "all") {
+      filtered = filtered.filter(
+        (loan) =>
+          loan.loan_type.toLowerCase().trim() ===
+          loanTypeFilter.toLowerCase().trim()
+      );
+    }
+
+    setFilteredLoans(filtered);
+    setTotal(filtered.length);
+    setPage(1);
+  }, [search, statusFilter, loanTypeFilter, allLoans]);
+
+  const updateLoanStatus = async (loanId: string, loanType: string, newStatus: string) => {
+    try {
+      const typeMap: Record<string, string> = {
+        "personal": "personal_loans",
+        "vehicle": "vehicle_loans",
+        "business": "business_loans",
+        "education": "education_loans",
+        "home": "home_loans",
+        "gold": "gold_loans",
+        "insurance": "insurance_loans",
+      };
+      const cleanType = loanType.toLowerCase().replace("loan", "").trim();
+      const table = typeMap[cleanType] || "personal_loans";
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/loans/${table}/${loanId}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update status");
+      }
+
       toast({
-        title: "Updated",
-        description: `Status updated to "${status}"`,
+        title: "Status Updated",
+        description: `Loan marked as ${newStatus}`,
       });
-    } catch (error) {
+
+      fetchLoans(); // ✅ refresh table
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to update loan status.",
+        title: "Error Updating Status",
+        description: error.message,
         variant: "destructive",
       });
     }
   };
 
-  const handleStatusChange = (loanId: number, status: string) => {
-    if (status === "rejected" || status === "cancel") {
-      setSelectedLoanId(loanId);
-      setNewStatus(status);
-      setReason(""); // reset reason
-      setShowReasonModal(true);
-    } else {
-      updateStatus(loanId, status);
-    }
+  // const handleStatusChange = (loanId: string, loanType: string, status: string) => {
+  //   if (status === "rejected" || status === "cancel") {
+  //     setSelectedLoanId(loanId);
+  //     setSelectedLoanType(loanType);
+  //     setNewStatus(status);
+  //     setReason("");
+  //     setShowReasonModal(true);
+  //   } else {
+  //     updateLoanStatus(loanId, loanType, status);
+  //   }
+  // };
+  const handleStatusChange = (loanId: string, loanType: string, status: string) => {
+    updateLoanStatus(loanId, loanType, status);
   };
+
 
   const formatDate = (date?: string) =>
     date
       ? new Date(date).toLocaleString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        })
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
       : "-";
 
   const totalPages = Math.ceil(total / limit);
+  const currentLoans = filteredLoans.slice((page - 1) * limit, page * limit);
 
   return (
     <motion.div
@@ -174,19 +244,13 @@ const fetchLoans = async () => {
         <Input
           placeholder="Search loans..."
           value={search}
-          onChange={(e) => {
-            setPage(1);
-            setSearch(e.target.value);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
           className="w-full md:w-80"
         />
 
         <Select
           value={statusFilter}
-          onValueChange={(val) => {
-            setPage(1);
-            setStatusFilter(val);
-          }}
+          onValueChange={(val) => setStatusFilter(val)}
         >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Filter by status" />
@@ -202,10 +266,7 @@ const fetchLoans = async () => {
 
         <Select
           value={loanTypeFilter}
-          onValueChange={(val) => {
-            setPage(1);
-            setLoanTypeFilter(val);
-          }}
+          onValueChange={(val) => setLoanTypeFilter(val)}
         >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Filter by loan type" />
@@ -213,12 +274,12 @@ const fetchLoans = async () => {
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="Personal Loan">Personal Loan</SelectItem>
-            <SelectItem value="Insurance">Insurance</SelectItem>
-            <SelectItem value="Vehicle Loans">Vehicle Loans</SelectItem>
+            <SelectItem value="Insurance Loan">Insurance Loan</SelectItem>
+            <SelectItem value="Vehicle Loan">Vehicle Loan</SelectItem>
             <SelectItem value="Education Loan">Education Loan</SelectItem>
-             <SelectItem value="Business Loan">Business Loan</SelectItem>
-              <SelectItem value="Home Loan">Home Loan</SelectItem>
-
+            <SelectItem value="Business Loan">Business Loan</SelectItem>
+            <SelectItem value="Home Loan">Home Loan</SelectItem>
+            <SelectItem value="Gold Loan">Gold Loan</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -229,50 +290,51 @@ const fetchLoans = async () => {
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
           Loading loan applications...
         </div>
-      ) : loans.length === 0 ? (
-        <p className="text-center text-gray-500 py-10">No loan applications found.</p>
+      ) : currentLoans.length === 0 ? (
+        <p className="text-center text-gray-500 py-10">
+          No loan applications found.
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border rounded-md text-sm">
             <thead className="bg-gray-100 text-left">
               <tr>
                 <th className="px-4 py-3 border">Name</th>
-                <th className="px-4 py-3 border">Email</th>
+                {/* <th className="px-4 py-3 border">Email</th> */}
                 <th className="px-4 py-3 border">Phone</th>
                 <th className="px-4 py-3 border">Loan Type</th>
                 <th className="px-4 py-3 border">Status</th>
-                <th className="px-4 py-3 border">Reason</th>
+                {/* <th className="px-4 py-3 border">Reason</th> */}
                 <th className="px-4 py-3 border">Created At</th>
-                <th className="px-4 py-3 border">Modified At</th>
               </tr>
             </thead>
             <tbody>
-              {loans.map((loan, i) => (
+              {currentLoans.map((loan, i) => (
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.full_name}</td>
-                  <td className="px-4 py-3 border">{loan.email_address}</td>
+                  {/* <td className="px-4 py-3 border">{loan.email_address}</td> */}
                   <td className="px-4 py-3 border">{loan.contact_number}</td>
                   <td className="px-4 py-3 border">{loan.loan_type}</td>
                   <td className="px-4 py-3 border">
-                     <Select
-    value={loan.status}
-    onValueChange={(val) => handleStatusChange(loan.id, val)}
-    disabled={loan.status === "approved" || loan.status === "rejected" || loan.status === "cancel"}
-  >
-    <SelectTrigger className="w-28">
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="pending">Pending</SelectItem>
-      <SelectItem value="approved">Approved</SelectItem>
-      <SelectItem value="rejected">Rejected</SelectItem>
-      <SelectItem value="cancel">Cancelled</SelectItem>
-    </SelectContent>
-  </Select>
+                    <Select
+                      value={loan.status}
+                      onValueChange={(val) =>
+                        handleStatusChange(loan.id, loan.loan_type, val)
+                      }
+                    >
+                      <SelectTrigger className={`w-28 ${getStatusColor(loan.status)}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="cancel">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </td>
-                  <td className="px-4 py-3 border">{loan.status_reason || "-"}</td>
+                  {/* <td className="px-4 py-3 border">{loan.status_reason || "-"}</td> */}
                   <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>
-                  <td className="px-4 py-3 border">{formatDate(loan.modified_status_time)}</td>
                 </tr>
               ))}
             </tbody>
@@ -304,40 +366,49 @@ const fetchLoans = async () => {
       )}
 
       {/* Reason Modal */}
-      {showReasonModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-    <div className="bg-white rounded-2xl p-8 w-1/2 max-w-xl h-[400px] flex flex-col justify-between shadow-lg">
-      <h2 className="text-2xl font-semibold mb-6 text-left text-gray-800">
-        Enter Reason
-      </h2>
-      <textarea
-        className="flex-1 w-full border border-gray-300 rounded-lg p-4 mb-6 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-        placeholder="Reason for rejection/cancellation"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      />
-      <div className="flex justify-end gap-4">
-        <Button
-          variant="outline"
-          className="px-6 py-2"
-          onClick={() => setShowReasonModal(false)}
-        >
-          Cancel
-        </Button>
-        <Button
-          className="px-6 py-2"
-          onClick={() => {
-            if (selectedLoanId) updateStatus(selectedLoanId, newStatus, reason);
-            setShowReasonModal(false);
-          }}
-        >
-          Submit
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
-
+      {/* {showReasonModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+          <div className="bg-white rounded-2xl p-8 w-1/2 max-w-xl h-[400px] flex flex-col justify-between shadow-lg">
+            <h2 className="text-2xl font-semibold mb-6 text-left text-gray-800">
+              Enter Reason
+            </h2>
+            <textarea
+              className="flex-1 w-full border border-gray-300 rounded-lg p-4 mb-6 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+              placeholder="Reason for rejection/cancellation"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                className="px-6 py-2"
+                onClick={() => setShowReasonModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="px-6 py-2"
+                onClick={() => {
+                  if (!reason && newStatus === "rejected") {
+                    toast({
+                      title: "Error",
+                      description:
+                        "Please enter a reason for rejection/cancellation.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  if (selectedLoanId && selectedLoanType)
+                    updateStatus(selectedLoanId, selectedLoanType, newStatus, reason);
+                  setShowReasonModal(false);
+                }}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )} */}
     </motion.div>
   );
 };

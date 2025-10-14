@@ -53,14 +53,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ filter }) => {
           },
         }
       );
-
-      
-
       if (!response.ok) throw new Error("Failed to fetch dashboard stats");
       const data = await response.json();
-      console.log("API Response Status:", data); // Debugging line
-
-      // ✅ Map API response -> Stat[]
+      console.log("API Response Status:", data);
       const mappedStats: Stat[] = [
         {
           title: "Loan Enquiries",

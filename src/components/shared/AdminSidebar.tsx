@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,6 +7,8 @@ import {
   ContactRound,
   Menu,
   LogOut,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -17,22 +19,52 @@ interface AdminSidebarProps {
   onToggle: () => void;
 }
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Applications", href: "/applications", icon: Package },
-  { name: "Contact Us", href: "/contactus", icon: ContactRound },
-];
-
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
+
+  const [openDropdown, setOpenDropdown] = useState(false);
+
+  const handleDropdownToggle = () => {
+    setOpenDropdown((prev) => !prev);
+  };
+
+  // Auto-open dropdown when any loan page is active
+  useEffect(() => {
+    if (
+      location.pathname.includes("PersonalTable") ||
+      location.pathname.includes("VehicleTable") ||
+      location.pathname.includes("BusinessTable") ||
+      location.pathname === "/applications"
+    ) {
+      setOpenDropdown(true);
+    }
+  }, [location.pathname]);
+
+  const mainNavigation = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Contact Us", href: "/contactus", icon: ContactRound },
+  ];
+
+  // Applications + Loan pages inside one dropdown
+  const loanNavigation = [
+    { name: "All Applications", href: "/applications", icon: Package },
+    { name: "Personal Loans", href: "/PersonalTable", icon: Package },
+    { name: "Vehicle Loans", href: "/VehicleTable", icon: Package },
+    { name: "Business Loans", href: "/BusinessTable", icon: Package },
+    { name: "Gold Loans", href: "/GoldTable", icon: Package },
+     { name: "Home Loans", href: "/HomeTable", icon: Package },
+    { name: "Insurance Loans", href: "/InsuranceTable", icon: Package },
+    { name: "Education Loans", href: "/EducationTable", icon: Package },
+
+  ];
 
   return (
     <motion.div
       initial={false}
       animate={{ width: collapsed ? 70 : 260 }}
       transition={{ duration: 0.35, ease: "easeInOut" }}
-      className="fixed left-4 top-4  h-[calc(100%-2rem)] bg-white/70 dark:bg-gray-900/80 
+      className="fixed left-4 top-4 h-[calc(100%-2rem)] bg-white/70 dark:bg-gray-900/80 
                  backdrop-blur-lg border border-gray-200/40 dark:border-gray-700/50 
                  rounded-2xl shadow-2xl z-40 flex flex-col"
     >
@@ -55,36 +87,107 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-5 space-y-2">
-        {navigation.map((item) => {
-          const isActive = location.pathname === item.href;
+      <nav className="flex-1 px-3 py-5 space-y-2 overflow-y-auto">
+        {/* Dashboard */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NavLink
+              to="/dashboard"
+              className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+                transition-all duration-200
+                ${
+                  location.pathname === "/dashboard"
+                    ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                }`}
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              {!collapsed && <span>Dashboard</span>}
+            </NavLink>
+          </TooltipTrigger>
+          {collapsed && <TooltipContent>Dashboard</TooltipContent>}
+        </Tooltip>
 
-          return (
-            <Tooltip key={item.name}>
-              <TooltipTrigger asChild>
-                <NavLink
-                  to={item.href}
-                  className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
-                    transition-all duration-200 group
-                    ${
-                      isActive
-                        ? "bg-gradient-to-br from-blue-600  to-[#0f77d2] text-white shadow-md"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
-                    }`}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.15, rotate: 5 }}
-                    className="flex-shrink-0"
+        {/* Applications Dropdown */}
+        <div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleDropdownToggle}
+                className={`relative w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium
+                  transition-all duration-200 group
+                  ${
+                    location.pathname.includes("Table") || location.pathname === "/applications"
+                      ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Package className="w-5 h-5" />
+                  {!collapsed && <span>Applications</span>}
+                </div>
+                {!collapsed &&
+                  (openDropdown ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  ))}
+              </button>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent>Applications</TooltipContent>}
+          </Tooltip>
+
+          {/* Dropdown Items */}
+          {!collapsed && openDropdown && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="mt-1 ml-8 space-y-1"
+            >
+              {loanNavigation.map((item, index) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <NavLink
+                    key={item.name}
+                    to={item.href}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                      ${
+                        isActive
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                      }
+                      ${index === 0 ? "font-semibold border-b border-gray-300/40 pb-2 mb-1" : ""}
+                    `}
                   >
-                    <item.icon className="w-5 h-5" />
-                  </motion.div>
-                  {!collapsed && <span>{item.name}</span>}
-                </NavLink>
-              </TooltipTrigger>
-              {collapsed && <TooltipContent>{item.name}</TooltipContent>}
-            </Tooltip>
-          );
-        })}
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </NavLink>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
+
+        {/* Contact Us */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NavLink
+              to="/contactus"
+              className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+                transition-all duration-200
+                ${
+                  location.pathname === "/contactus"
+                    ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                }`}
+            >
+              <ContactRound className="w-5 h-5" />
+              {!collapsed && <span>Contact Us</span>}
+            </NavLink>
+          </TooltipTrigger>
+          {collapsed && <TooltipContent>Contact Us</TooltipContent>}
+        </Tooltip>
       </nav>
 
       {/* User Section */}
