@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { DashboardStats } from "./components/DashboardStats";
+import DashboardStats from "./components/DashboardStats";
 import { SalesChart } from "./components/SalesChart";
 import TopProducts from "./components/TopProducts";
 
@@ -52,54 +52,8 @@ export const Dashboard: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* 🔹 Pass filter to DashboardStats */}
-      <DashboardStats filter={filter} />
-      <TopProducts />
-
-      {/* 🔹 Custom Date Modal */}
-      {showCustomModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-96">
-            <h2 className="text-xl font-bold mb-4">Select Custom Date Range</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-gray-700">Start Date</label>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  min={minDate} // ⬅ block past dates
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="mt-1 border border-gray-300 rounded-lg px-3 py-2 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">End Date</label>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  min={minDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="mt-1 border border-gray-300 rounded-lg px-3 py-2 w-full"
-                />
-              </div>
-              <div className="flex justify-end space-x-2 mt-4">
-                <button
-                  onClick={() => setShowCustomModal(false)}
-                  className="px-4 py-2 rounded-lg border border-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCustomSubmit}
-                  className="px-4 py-2 rounded-lg bg-blue-500 text-white"
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DashboardStats  />
+     
     </div>
   );
 };

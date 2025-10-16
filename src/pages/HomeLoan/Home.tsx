@@ -27,6 +27,7 @@ interface LoanApplication {
 
 const HomeTable: React.FC = () => {
   const [loans, setLoans] = useState<LoanApplication[]>([]);
+  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -51,56 +52,46 @@ const HomeTable: React.FC = () => {
     }
   };
 
-  const fetchLoans = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        table: "home_loans",
-        page: page.toString(),
-        limit: limit.toString(),
-      });
+const fetchLoans = async () => {
+  setLoading(true);
+  try {
+    const params = new URLSearchParams({
+      table: "home_loans",
+      page: page.toString(),
+      limit: limit.toString(),
+    });
 
-      const res = await fetch(`${API_BASE_URL}/api/loans?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch loans");
+    const res = await fetch(`${API_BASE_URL}/api/loans?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch loans");
 
-      const data = await res.json();
-      if (!data.success || !data.data) throw new Error("Invalid data format");
+    const data = await res.json();
+    if (!data.success || !data.data) throw new Error("Invalid data format");
 
-      let filtered: LoanApplication[] = data.data.map((loan: any) => ({
-        id: loan.id,
-        fullname: loan.fullname,
-        email_address: loan.email || loan.email_address || "",
-        mobile: loan.mobile || loan.phone || "",
-        amount: loan.desiredloanamount || "N/A",
-        status: loan.status,
-        status_reason: loan.reason || loan.status_reason || "",
-        created_at: loan.created_at || loan.date || "",
-      }));
+    const mapped: LoanApplication[] = data.data.map((loan: any) => ({
+      id: loan.id,
+      fullname: loan.fullname,
+      email_address: loan.email || loan.email_address || "",
+      mobile: loan.mobile || loan.phone || "",
+      amount: loan.desiredloanamount || "N/A",
+      status: loan.status,
+      status_reason: loan.reason || loan.status_reason || "",
+      created_at: loan.created_at || loan.date || "",
+    }));
 
-      if (search.trim()) {
-        filtered = filtered.filter((loan) =>
-          loan.fullname.toLowerCase().includes(search.toLowerCase())
-        );
-      }
+    setAllLoans(mapped);
+    setLoans(mapped); // initial display
+    setTotal(data.total);
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message || "Failed to fetch loans",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
-      if (statusFilter !== "all") {
-        filtered = filtered.filter(
-          (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
-        );
-      }
-
-      setTotal(data.total);
-      setLoans(filtered);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch loans",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchLoanDetails = async (loanId: string) => {
     setLoading(true);
@@ -141,9 +132,27 @@ const HomeTable: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLoans();
-  }, [search, statusFilter, page]);
+useEffect(() => {
+  let filtered = [...allLoans];
+
+  if (search.trim()) {
+    filtered = filtered.filter((loan) =>
+      loan.fullname.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+
+  if (statusFilter !== "all") {
+    filtered = filtered.filter(
+      (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
+    );
+  }
+
+  setLoans(filtered);
+}, [search, statusFilter, allLoans]);
+
+useEffect(() => {
+  fetchLoans();
+}, [page]);
 
   const fieldLabelMap: Record<string, string> = {
     fullname: "Full Name",
@@ -159,13 +168,44 @@ const HomeTable: React.FC = () => {
   const formatKey = (key: string) =>
     fieldLabelMap[key] || key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-[70vh]">
-        <Loader2 className="animate-spin w-10 h-10 text-primary" />
+if (loading) {
+  return (
+    <div className="max-w-full p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+        <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+        <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
       </div>
-    );
-  }
+
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="w-full border-collapse">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="text-left p-3">Name</th>
+              <th className="text-left p-3">Phone</th>
+              <th className="text-left p-3">Status</th>
+              <th className="text-left p-3">Amount</th>
+              <th className="text-left p-3">Created</th>
+              <th className="text-left p-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <tr key={idx} className="animate-pulse">
+                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 
   return (
     <div className="max-w-full p-6">

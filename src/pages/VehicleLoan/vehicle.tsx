@@ -28,6 +28,7 @@ interface LoanApplication {
 const VehicleTable: React.FC = () => {
   const { toast } = useToast();
   const [loans, setLoans] = useState<LoanApplication[]>([]);
+  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -85,7 +86,7 @@ const VehicleTable: React.FC = () => {
     key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const personalDetailsKeys = [
-  
+
     "fullname",
     "mobile",
     "emailaddress",
@@ -183,18 +184,11 @@ const VehicleTable: React.FC = () => {
   const fetchLoans = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        table,
-        page: page.toString(),
-        limit: limit.toString(),
-      });
-
-      const res = await fetch(`${API_BASE_URL}/api/loans?${params}`);
+      const res = await fetch(`${API_BASE_URL}/api/loans?table=vehicle_loans&page=1&limit=1000`); // Fetch large batch
       if (!res.ok) throw new Error("Failed to fetch loans");
       const data = await res.json();
-      setTotal(data.total || 0);
 
-      let filtered: LoanApplication[] = data.data.map((loan: any) => ({
+      const formatted: LoanApplication[] = data.data.map((loan: any) => ({
         id: loan.id,
         full_name: loan.fullname,
         email_address: loan.emailaddress || "",
@@ -205,23 +199,10 @@ const VehicleTable: React.FC = () => {
         created_at: loan.createdat || "",
       }));
 
-      if (search.trim()) {
-        filtered = filtered.filter((loan) =>
-          loan.full_name.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-      if (statusFilter !== "all") {
-        filtered = filtered.filter(
-          (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
-        );
-      }
-      setLoans(filtered);
+      setAllLoans(formatted);
+      setLoans(formatted);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -253,8 +234,27 @@ const VehicleTable: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isDetailsView) fetchLoans();
-  }, [search, statusFilter, page, isDetailsView]);
+    let filtered = [...allLoans];
+
+    if (search.trim()) {
+      filtered = filtered.filter((loan) =>
+        loan.full_name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    setPage(1); // Reset page whenever filter/search changes
+    setLoans(filtered);
+  }, [search, statusFilter, allLoans]);
+
+  useEffect(() => {
+    fetchLoans();
+  }, [page]);
 
   // ------------- Update Loan Status -------------
   const updateLoanStatus = async (loanId: string, newStatus: string) => {
@@ -285,12 +285,45 @@ const VehicleTable: React.FC = () => {
   };
 
   // ------------- Loading State -------------
-  if (loading)
+  // ------------- Loading State -------------
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-[70vh]">
-        <Loader2 className="animate-spin w-10 h-10 text-primary" />
+      <div className="max-w-full p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="text-left p-3">Name</th>
+                <th className="text-left p-3">Phone</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Amount</th>
+                <th className="text-left p-3">Created</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
+  }
+
 
   // ------------- Details View -------------
   if (isDetailsView && loanDetails) {
@@ -340,10 +373,10 @@ const VehicleTable: React.FC = () => {
             <div className="mt-4 sm:mt-0 flex flex-col items-end">
               <span
                 className={`text-sm font-medium px-3 py-1 rounded-full ${loanDetails.status === "approved"
-                    ? "bg-green-500 text-white"
-                    : loanDetails.status === "rejected"
-                      ? "bg-red-500 text-white"
-                      : "bg-yellow-400 text-black"
+                  ? "bg-green-500 text-white"
+                  : loanDetails.status === "rejected"
+                    ? "bg-red-500 text-white"
+                    : "bg-yellow-400 text-black"
                   }`}
               >
                 {loanDetails.status?.toUpperCase()}
@@ -442,8 +475,8 @@ const VehicleTable: React.FC = () => {
                 <div
                   key={idx}
                   className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${isUploaded
-                      ? "border-blue-200 bg-blue-50 hover:shadow-md"
-                      : "border-gray-200 bg-gray-50 opacity-80"
+                    ? "border-blue-200 bg-blue-50 hover:shadow-md"
+                    : "border-gray-200 bg-gray-50 opacity-80"
                     }`}
                 >
                   <FileText

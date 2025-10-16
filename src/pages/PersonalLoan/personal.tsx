@@ -26,6 +26,7 @@ interface LoanApplication {
 
 const PersonalTable: React.FC = () => {
   const [loans, setLoans] = useState<LoanApplication[]>([]);
+  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -42,13 +43,13 @@ const PersonalTable: React.FC = () => {
     try {
       const params = new URLSearchParams({
         table: table,
-        page: page.toString(),
-        limit: limit.toString(),
+        page: "1",
+        limit: "1000", // fetch all records for local filtering
       });
       const res = await fetch(`${API_BASE_URL}/api/loans?${params}`);
       const data = await res.json();
 
-      let filtered = data.data.map((loan: any) => ({
+      const mappedLoans = data.data.map((loan: any) => ({
         id: loan.id,
         full_name: loan.fullname,
         email_address: loan.email || "",
@@ -59,18 +60,9 @@ const PersonalTable: React.FC = () => {
         created_at: loan.created_at || "",
       }));
 
-      if (search)
-        filtered = filtered.filter((loan: any) =>
-          loan.full_name.toLowerCase().includes(search.toLowerCase())
-        );
-      if (statusFilter !== "all")
-        filtered = filtered.filter(
-          (loan: any) =>
-            loan.status.toLowerCase() === statusFilter.toLowerCase()
-        );
-
-      setLoans(filtered);
-      setTotal(data.total);
+      setAllLoans(mappedLoans); // store full dataset
+      setLoans(mappedLoans); // initialize visible list
+      setTotal(mappedLoans.length);
     } catch (err: any) {
       toast({
         title: "Error",
@@ -138,8 +130,27 @@ const PersonalTable: React.FC = () => {
     }
   };
   useEffect(() => {
+    let filtered = allLoans;
+
+    if (search) {
+      filtered = filtered.filter((loan) =>
+        loan.full_name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    setLoans(filtered);
+    setPage(1);
+  }, [search, statusFilter, allLoans]);
+
+  useEffect(() => {
     fetchLoans();
-  }, [search, statusFilter, page]);
+  }, [page]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -176,13 +187,44 @@ const PersonalTable: React.FC = () => {
     fieldLabelMap[key] ||
     key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-  if (detailsLoading && !selectedLoan) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh]">
-        <Loader2 className="animate-spin w-10 h-10 text-blue-600 mb-3" />
+      <div className="max-w-full p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="text-left p-3">Name</th>
+                <th className="text-left p-3">Phone</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Amount</th>
+                <th className="text-left p-3">Created</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
+
 
   if (selectedLoan) {
     const entries = Object.entries(selectedLoan).filter(
@@ -227,10 +269,10 @@ const PersonalTable: React.FC = () => {
                 <div className="mt-4 sm:mt-0 flex flex-col items-end">
                   <span
                     className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
-                        ? "bg-green-500 text-white"
-                        : selectedLoan.status === "rejected"
-                          ? "bg-red-500 text-white"
-                          : "bg-yellow-400 text-black"
+                      ? "bg-green-500 text-white"
+                      : selectedLoan.status === "rejected"
+                        ? "bg-red-500 text-white"
+                        : "bg-yellow-400 text-black"
                       }`}
                   >
                     {selectedLoan.status?.toUpperCase()}

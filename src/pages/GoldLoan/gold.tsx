@@ -29,7 +29,7 @@ const GoldTable: React.FC = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 10;
-
+  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
   const [selectedDocUrl, setSelectedDocUrl] = useState<string | null>(null);
   const [docLoadError, setDocLoadError] = useState(false);
@@ -89,7 +89,7 @@ const GoldTable: React.FC = () => {
       const data = await res.json();
       if (!data.success || !data.data) throw new Error("Invalid data format");
 
-      let filtered: LoanApplication[] = data.data.map((loan: any) => ({
+      const mapped: LoanApplication[] = data.data.map((loan: any) => ({
         id: loan.id,
         full_name: loan.full_name,
         email_address: loan.email || loan.email_address || "",
@@ -102,20 +102,9 @@ const GoldTable: React.FC = () => {
         aadhar_card_url: loan.aadhar_card_url || "",
       }));
 
-      if (search.trim()) {
-        filtered = filtered.filter((loan) =>
-          loan.full_name.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-
-      if (statusFilter !== "all") {
-        filtered = filtered.filter(
-          (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
-        );
-      }
-
+      setAllLoans(mapped); // store all fetched loans
+      setLoans(mapped);    // show all initially
       setTotal(data.total);
-      setLoans(filtered);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -126,7 +115,6 @@ const GoldTable: React.FC = () => {
       setLoading(false);
     }
   };
-
   const fetchLoanDetails = async (loanId: string) => {
     setLoading(true);
     try {
@@ -159,10 +147,28 @@ const GoldTable: React.FC = () => {
       toast({ title: "Error Updating Status", description: error.message, variant: "destructive" });
     }
   };
+  useEffect(() => {
+    let filtered = [...allLoans];
 
+    if (search.trim()) {
+      filtered = filtered.filter((loan) =>
+        loan.full_name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    setLoans(filtered);
+  }, [search, statusFilter, allLoans]);
+
+  // Fetch API only when page changes
   useEffect(() => {
     fetchLoans();
-  }, [search, statusFilter, page]);
+  }, [page]);
 
   const fieldLabelMap: Record<string, string> = {
     full_name: "Full Name",
@@ -181,11 +187,42 @@ const GoldTable: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[70vh]">
-        <Loader2 className="animate-spin w-10 h-10 text-primary" />
+      <div className="max-w-full p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="text-left p-3">Name</th>
+                <th className="text-left p-3">Phone</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Amount</th>
+                <th className="text-left p-3">Created</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
+
 
   return (
     <div className="max-w-full p-6">
@@ -335,10 +372,10 @@ const GoldTable: React.FC = () => {
               <div className="mt-4 sm:mt-0 flex flex-col items-end">
                 <span
                   className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
-                      ? "bg-green-500 text-white"
-                      : selectedLoan.status === "rejected"
-                        ? "bg-red-500 text-white"
-                        : "bg-yellow-400 text-black"
+                    ? "bg-green-500 text-white"
+                    : selectedLoan.status === "rejected"
+                      ? "bg-red-500 text-white"
+                      : "bg-yellow-400 text-black"
                     }`}
                 >
                   {selectedLoan.status?.toUpperCase()}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, FileText,Info } from "lucide-react";
+import { Loader2, ArrowLeft, FileText, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -36,7 +36,7 @@ const EducationTable: React.FC = () => {
   const [isDetailsView, setIsDetailsView] = useState(false);
   const limit = 10;
   const table = "education_loans";
-
+  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
   // ---------- Field Mapping ----------
   const fieldLabelMap: Record<string, string> = {
     studentfullname: "Full Name",
@@ -160,7 +160,7 @@ const EducationTable: React.FC = () => {
       const data = await res.json();
       setTotal(data.total || 0);
 
-      let filtered: LoanApplication[] = data.data.map((loan: any) => ({
+      const mapped: LoanApplication[] = data.data.map((loan: any) => ({
         id: loan.id,
         full_name: loan.studentfullname,
         email_address: loan.email || "",
@@ -171,19 +171,8 @@ const EducationTable: React.FC = () => {
         created_at: loan.createdat || "",
       }));
 
-      if (search.trim()) {
-        filtered = filtered.filter((l) =>
-          l.full_name.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-
-      if (statusFilter !== "all") {
-        filtered = filtered.filter(
-          (l) => l.status.toLowerCase() === statusFilter.toLowerCase()
-        );
-      }
-
-      setLoans(filtered);
+      setAllLoans(mapped);
+      setLoans(mapped); // show initially all loans
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -228,15 +217,65 @@ const EducationTable: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isDetailsView) fetchLoans();
-  }, [search, statusFilter, page, isDetailsView]);
+    let filtered = [...allLoans];
 
-  if (loading)
+    if (search.trim()) {
+      filtered = filtered.filter((l) =>
+        l.full_name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (l) => l.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    setLoans(filtered);
+  }, [search, statusFilter, allLoans]);
+
+  useEffect(() => {
+    fetchLoans();
+  }, [page]);
+
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-[70vh]">
-        <Loader2 className="animate-spin w-10 h-10 text-primary" />
+      <div className="max-w-full p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="text-left p-3">Name</th>
+                <th className="text-left p-3">Phone</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Amount</th>
+                <th className="text-left p-3">Created</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
+  }
+
 
   // ---------- Detailed View ----------
   if (isDetailsView && loanDetails) {
@@ -276,13 +315,12 @@ const EducationTable: React.FC = () => {
             </div>
             <div className="mt-4 sm:mt-0 flex flex-col items-end">
               <span
-                className={`text-sm font-medium px-3 py-1 rounded-full ${
-                  loanDetails.status === "approved"
-                    ? "bg-green-500 text-white"
-                    : loanDetails.status === "rejected"
+                className={`text-sm font-medium px-3 py-1 rounded-full ${loanDetails.status === "approved"
+                  ? "bg-green-500 text-white"
+                  : loanDetails.status === "rejected"
                     ? "bg-red-500 text-white"
                     : "bg-yellow-400 text-black"
-                }`}
+                  }`}
               >
                 {loanDetails.status?.toUpperCase()}
               </span>
@@ -347,11 +385,10 @@ const EducationTable: React.FC = () => {
               return (
                 <div
                   key={idx}
-                  className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${
-                    isUploaded
-                      ? "border-blue-200 bg-blue-50 hover:shadow-md"
-                      : "border-gray-200 bg-gray-50 opacity-80"
-                  }`}
+                  className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${isUploaded
+                    ? "border-blue-200 bg-blue-50 hover:shadow-md"
+                    : "border-gray-200 bg-gray-50 opacity-80"
+                    }`}
                 >
                   <FileText
                     className={`w-8 h-8 mb-3 ${isUploaded ? "text-blue-700" : "text-gray-400"}`}

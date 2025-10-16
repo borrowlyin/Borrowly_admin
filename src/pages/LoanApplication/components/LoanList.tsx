@@ -286,9 +286,40 @@ const LoanList: React.FC = () => {
 
       {/* Table */}
       {loading ? (
-        <div className="flex justify-center items-center py-20 text-gray-500">
-          <Loader2 className="w-6 h-6 animate-spin mr-2" />
-          Loading loan applications...
+        <div className="max-w-full p-6">
+          {/* Top Controls Skeleton */}
+          {/* <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+            <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+            <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
+          </div> */}
+
+          {/* Table Skeleton */}
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full border-collapse">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-left p-3">Name</th>
+                  <th className="text-left p-3">Phone</th>
+                  <th className="text-left p-3">Loan Type</th>
+                  <th className="text-left p-3">status</th>
+                  <th className="text-left p-3">Created</th>
+                 
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                    <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                    <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                    <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                    <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : currentLoans.length === 0 ? (
         <p className="text-center text-gray-500 py-10">

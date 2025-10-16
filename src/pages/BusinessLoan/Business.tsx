@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/lib/api";
-import { motion } from "framer-motion";
 
 interface LoanApplication {
   id: string;
@@ -41,6 +40,7 @@ const formatKey = (key: string) =>
 
 const BusinessTable: React.FC = () => {
   const [loans, setLoans] = useState<LoanApplication[]>([]);
+  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -81,7 +81,7 @@ const BusinessTable: React.FC = () => {
       const data = await res.json();
       if (!data.success || !data.data) throw new Error("Invalid data format");
 
-      let filtered: LoanApplication[] = data.data.map((loan: any) => ({
+      const mapped: LoanApplication[] = data.data.map((loan: any) => ({
         id: loan.id,
         full_name: loan.fullname,
         email_address: loan.email || loan.email_address || "",
@@ -92,20 +92,9 @@ const BusinessTable: React.FC = () => {
         created_at: loan.created_at || loan.date || "",
       }));
 
-      if (search.trim()) {
-        filtered = filtered.filter((loan) =>
-          loan.full_name.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-
-      if (statusFilter !== "all") {
-        filtered = filtered.filter(
-          (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
-        );
-      }
-
+      setAllLoans(mapped); // store original fetched loans
+      setLoans(mapped);    // show all initially
       setTotal(data.total);
-      setLoans(filtered);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -116,11 +105,28 @@ const BusinessTable: React.FC = () => {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    let filtered = [...allLoans];
 
+    if (search.trim()) {
+      filtered = filtered.filter((loan) =>
+        loan.full_name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    setLoans(filtered);
+  }, [search, statusFilter, allLoans]);
+
+  // ---------------- Fetch API only on page change ----------------
   useEffect(() => {
     fetchLoans();
-  }, [search, statusFilter, page]);
-
+  }, [page]);
   const updateLoanStatus = async (loanId: string, newStatus: string) => {
     try {
       const res = await fetch(
@@ -178,6 +184,60 @@ const BusinessTable: React.FC = () => {
     }
   };
 
+  // ---------------- Skeleton Loading ----------------
+  if (loading) {
+    return (
+      <div className="max-w-full p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="text-left p-3">Name</th>
+                <th className="text-left p-3">Phone</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Amount</th>
+                <th className="text-left p-3">Created</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+
+  if (loading && showDetails) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-10 space-y-10 animate-pulse">
+        <div className="h-10 w-1/3 bg-gray-300 rounded"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="h-64 bg-gray-200 rounded-xl"></div>
+          <div className="h-64 bg-gray-200 rounded-xl"></div>
+        </div>
+        <div className="h-64 bg-gray-200 rounded-xl"></div>
+      </div>
+    );
+  }
+
+  // ---------------- Details View ----------------
   if (showDetails && selectedLoan) {
     const entries = Object.entries(selectedLoan).filter(
       ([key, value]) =>
@@ -216,13 +276,12 @@ const BusinessTable: React.FC = () => {
             </div>
             <div className="mt-4 sm:mt-0 flex flex-col items-end">
               <span
-                className={`text-sm font-medium px-3 py-1 rounded-full ${
-                  selectedLoan.status === "approved"
+                className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
                     ? "bg-green-600 text-white"
                     : selectedLoan.status === "rejected"
-                    ? "bg-red-600 text-white"
-                    : "bg-yellow-400 text-black"
-                }`}
+                      ? "bg-red-600 text-white"
+                      : "bg-yellow-400 text-black"
+                  }`}
               >
                 {selectedLoan.status?.toUpperCase()}
               </span>
@@ -257,6 +316,7 @@ const BusinessTable: React.FC = () => {
     );
   }
 
+  // ---------------- Table View ----------------
   return (
     <div className="max-w-full p-6">
       <h2 className="text-xl font-semibold mb-4 text-gray-900">Business Loans</h2>
@@ -306,15 +366,9 @@ const BusinessTable: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {loans.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-6 text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
-                </td>
-              </tr>
-            ) : loans.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-gray-500">
+                <td colSpan={6} className="p-6 text-center text-gray-500">
                   No loans found.
                 </td>
               </tr>
