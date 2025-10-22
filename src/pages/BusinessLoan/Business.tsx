@@ -277,10 +277,10 @@ const BusinessTable: React.FC = () => {
             <div className="mt-4 sm:mt-0 flex flex-col items-end">
               <span
                 className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
-                    ? "bg-green-600 text-white"
-                    : selectedLoan.status === "rejected"
-                      ? "bg-red-600 text-white"
-                      : "bg-yellow-400 text-black"
+                  ? "bg-green-600 text-white"
+                  : selectedLoan.status === "rejected"
+                    ? "bg-red-600 text-white"
+                    : "bg-yellow-400 text-black"
                   }`}
               >
                 {selectedLoan.status?.toUpperCase()}
@@ -402,12 +402,10 @@ const BusinessTable: React.FC = () => {
                   <td className="p-3 border-b">
                     {new Date(loan.created_at).toLocaleDateString()}
                   </td>
-                  <td className="p-3 border-b">
-                    <Info
-                      className="h-5 w-5 inline cursor-pointer text-blue-600 hover:text-blue-800"
-                      onClick={() => fetchLoanDetails(loan.id)}
-                    />
+                  <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                    <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
                   </td>
+
                 </tr>
               ))
             )}

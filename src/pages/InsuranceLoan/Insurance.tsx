@@ -64,45 +64,45 @@ const InsuranceTable: React.FC = () => {
   };
 
   const fetchLoans = async () => {
-  setLoading(true);
-  try {
-    const params = new URLSearchParams({
-      table: "insurance_loans",
-      page: page.toString(),
-      limit: limit.toString(),
-    });
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        table: "insurance_loans",
+        page: page.toString(),
+        limit: limit.toString(),
+      });
 
-    const res = await fetch(`${API_BASE_URL}/api/loans?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch loans");
+      const res = await fetch(`${API_BASE_URL}/api/loans?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch loans");
 
-    const data = await res.json();
-    if (!data.success || !data.data) throw new Error("Invalid data format");
+      const data = await res.json();
+      if (!data.success || !data.data) throw new Error("Invalid data format");
 
-    const mapped: LoanApplication[] = data.data.map((loan: any) => ({
-      id: loan.id,
-      fullname: loan.fullname || loan.full_name || "",
-      email_address: loan.email || loan.email_address || "",
-      mobile: loan.mobile || loan.contact_number || loan.phone || "",
-      amount: loan.annual_income || "N/A",
-      loan_type: loan.loan_type || "",
-      status: loan.status,
-      status_reason: loan.reason || loan.status_reason || "",
-      created_at: loan.created_at || loan.date || "",
-    }));
+      const mapped: LoanApplication[] = data.data.map((loan: any) => ({
+        id: loan.id,
+        fullname: loan.fullname || loan.full_name || "",
+        email_address: loan.email || loan.email_address || "",
+        mobile: loan.mobile || loan.contact_number || loan.phone || "",
+        amount: loan.annual_income || "N/A",
+        loan_type: loan.loan_type || "",
+        status: loan.status,
+        status_reason: loan.reason || loan.status_reason || "",
+        created_at: loan.created_at || loan.date || "",
+      }));
 
-    setAllLoans(mapped);
-    setLoans(mapped); // initial table display
-    setTotal(data.total);
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: error.message || "Failed to fetch loans",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+      setAllLoans(mapped);
+      setLoans(mapped); // initial table display
+      setTotal(data.total);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch loans",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const fetchLoanDetails = async (loanId: string) => {
     setLoading(true);
     try {
@@ -143,65 +143,65 @@ const InsuranceTable: React.FC = () => {
     }
   };
 
-useEffect(() => {
-  let filtered = [...allLoans];
+  useEffect(() => {
+    let filtered = [...allLoans];
 
-  if (search.trim()) {
-    filtered = filtered.filter((loan) =>
-      loan.fullname.toLowerCase().includes(search.toLowerCase())
-    );
-  }
+    if (search.trim()) {
+      filtered = filtered.filter((loan) =>
+        loan.fullname.toLowerCase().includes(search.toLowerCase())
+      );
+    }
 
-  if (statusFilter !== "all") {
-    filtered = filtered.filter(
-      (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
-    );
-  }
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (loan) => loan.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
 
-  setLoans(filtered);
-}, [search, statusFilter, allLoans]);
+    setLoans(filtered);
+  }, [search, statusFilter, allLoans]);
 
-useEffect(() => {
-  fetchLoans();
-}, [page]);
+  useEffect(() => {
+    fetchLoans();
+  }, [page]);
 
-if (loading) {
-  return (
-    <div className="max-w-full p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
-        <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
-        <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
-      </div>
+  if (loading) {
+    return (
+      <div className="max-w-full p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
+        </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="w-full border-collapse">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left p-3">Name</th>
-              <th className="text-left p-3">Phone</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-left p-3">Amount</th>
-              <th className="text-left p-3">Created</th>
-              <th className="text-left p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: 5 }).map((_, idx) => (
-              <tr key={idx} className="animate-pulse">
-                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
-                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
-                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
-                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
-                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
-                <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="text-left p-3">Name</th>
+                <th className="text-left p-3">Phone</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Amount</th>
+                <th className="text-left p-3">Created</th>
+                <th className="text-left p-3">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                  <td className="p-3 h-6 bg-gray-200 rounded mb-2"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
 
   return (
@@ -295,12 +295,10 @@ if (loading) {
                       <td className="p-3 border-b border-gray-200 dark:border-gray-700">
                         {new Date(loan.created_at).toLocaleDateString()}
                       </td>
-                      <td
-                        className="p-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer"
-                        onClick={() => fetchLoanDetails(loan.id)}
-                      >
-                        <Info className="h-5 w-5 inline" />
+                      <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                        <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
                       </td>
+
                     </tr>
                   ))
                 )}
@@ -348,13 +346,12 @@ if (loading) {
               </div>
               <div className="mt-4 sm:mt-0 flex flex-col items-end">
                 <span
-                  className={`text-sm font-medium px-3 py-1 rounded-full ${
-                    selectedLoan.status === "approved"
+                  className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
                       ? "bg-green-600 text-white"
                       : selectedLoan.status === "rejected"
-                      ? "bg-red-600 text-white"
-                      : "bg-yellow-400 text-black"
-                  }`}
+                        ? "bg-red-600 text-white"
+                        : "bg-yellow-400 text-black"
+                    }`}
                 >
                   {selectedLoan.status?.toUpperCase()}
                 </span>

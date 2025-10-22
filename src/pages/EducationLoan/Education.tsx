@@ -497,11 +497,12 @@ const EducationTable: React.FC = () => {
                   </td>
                   <td className="p-3">{loan.amount}</td>
                   <td className="p-3">{new Date(loan.created_at).toLocaleDateString()}</td>
-                  <td className="p-3">
-                    <Info
+                 <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                    <span 
                       className="h-5 w-5 text-blue-600 cursor-pointer"
                       onClick={() => fetchLoanDetails(loan.id)}
-                    />
+                    >
+                    View</span>
                   </td>
                 </tr>
               ))

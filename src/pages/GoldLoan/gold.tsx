@@ -319,11 +319,13 @@ const GoldTable: React.FC = () => {
                       <td className="p-3 border-b border-gray-200">
                         {new Date(loan.created_at).toLocaleDateString()}
                       </td>
-                      <td className="p-3 border-b border-gray-200">
-                        <Info
+                   <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+
+                        <span
                           className="h-5 w-5 inline cursor-pointer"
                           onClick={() => fetchLoanDetails(loan.id)}
-                        />
+                        >view
+                        </span> 
                       </td>
                     </tr>
                   ))

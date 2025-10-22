@@ -592,12 +592,10 @@ const VehicleTable: React.FC = () => {
                   <td className="p-3">
                     {new Date(loan.created_at).toLocaleDateString()}
                   </td>
-                  <td className="p-3">
-                    <Info
-                      className="h-5 w-5 text-blue-600 cursor-pointer"
-                      onClick={() => fetchLoanDetails(loan.id)}
-                    />
+                  <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                    <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
                   </td>
+
                 </tr>
               ))
             )}

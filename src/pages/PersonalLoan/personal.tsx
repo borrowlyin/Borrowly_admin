@@ -396,12 +396,10 @@ const PersonalTable: React.FC = () => {
                 <td className="p-3">
                   {new Date(loan.created_at).toLocaleDateString()}
                 </td>
-                <td
-                  className="p-3 cursor-pointer text-blue-600"
-                  onClick={() => fetchLoanDetails(loan.id)}
-                >
-                  <Info className="inline w-5 h-5 hover:scale-110 transition" />
+                <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                  <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
                 </td>
+
               </tr>
             ))}
           </tbody>
