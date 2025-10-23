@@ -1,6 +1,6 @@
 // API configuration for admin panel
-export const API_BASE_URL = "http://localhost:8080";
-
+// export const API_BASE_URL = "http://localhost:4528";
+export const API_BASE_URL = "https://borrowly-backend-696063357505.europe-west1.run.app";
 
 export const buildApiUrl = (endpoint: string): string => {
   return `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;

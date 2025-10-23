@@ -322,7 +322,13 @@ const BusinessTable: React.FC = () => {
       setShowDownloadModal(false);
       await handleDownload(modalStartDate || undefined, modalEndDate || undefined);
     };
-
+  const filteredLoans = loans.filter((loan) => {
+    const name = (loan.full_name ?? loan.fullname ?? "").toLowerCase();
+    const phone = (loan.contact_number ?? loan.mobile ?? loan.phone ?? "").toLowerCase();
+    const matchesSearch = search ? name.includes(search.toLowerCase()) || phone.includes(search.toLowerCase()) : true;
+    const matchesStatus = statusFilter === "all" ? true : (loan.status ?? "pending").toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
   return (
     <motion.div
       className="bg-white h-[93dvh] overflow-scroll rounded-xl p-6 shadow-lg"
@@ -544,7 +550,7 @@ const BusinessTable: React.FC = () => {
             </thead>
 
             <tbody>
-              {loans.map((loan, i) => (
+                {filteredLoans.map((loan, i) => (
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.full_name ?? loan.fullname ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.contact_number ?? loan.mobile ?? loan.phone ?? "-"}</td>

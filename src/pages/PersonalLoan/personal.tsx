@@ -324,7 +324,18 @@ const PersonalTable: React.FC = () => {
     setShowDownloadModal(false);
     await handleDownload(modalStartDate || undefined, modalEndDate || undefined);
   };
+  const filteredLoans = loans.filter((loan) => {
 
+    const statusMatch = statusFilter === "all" || loan.status === statusFilter;
+
+    const searchLower = search.toLowerCase();
+    const searchMatch =
+      loan.fullname?.toLowerCase().includes(searchLower) ||
+      loan.mobile?.toLowerCase().includes(searchLower) ||
+      loan.email?.toLowerCase().includes(searchLower);
+
+    return statusMatch && (!search || searchMatch);
+  });
   return (
     <motion.div
       className="bg-white h-[93dvh] rounded-xl p-6 shadow-lg"
@@ -547,7 +558,7 @@ const PersonalTable: React.FC = () => {
             </thead>
 
             <tbody>
-              {loans.map((loan, i) => (
+              {filteredLoans.map((loan, i) => (
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.fullname ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.mobile ?? "-"}</td>

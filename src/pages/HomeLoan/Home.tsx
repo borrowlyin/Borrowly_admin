@@ -568,7 +568,21 @@ const HomeTable: React.FC = () => {
             </thead>
 
             <tbody>
-              {loans.map((loan, i) => (
+             {loans
+                .filter((loan) => {
+                  // filter by search
+                  const searchLower = search.toLowerCase();
+                  const matchesSearch =
+                    loan.fullname?.toLowerCase().includes(searchLower) ||
+                    loan.mobile?.toLowerCase().includes(searchLower) ||
+                    loan.email_address?.toLowerCase().includes(searchLower);
+
+                  // filter by status
+                  const matchesStatus = statusFilter === "all" || loan.status?.toLowerCase() === statusFilter;
+
+                  return matchesSearch && matchesStatus;
+                })
+                .map((loan, i) => (
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.fullname ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.mobile ?? "-"}</td>

@@ -28,10 +28,10 @@ interface Agent {
 const formatDate = (d?: string) =>
   d
     ? new Date(d).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : "-";
 
 const fieldLabelMap: Record<string, string> = {
@@ -54,6 +54,8 @@ const formatKey = (key: string) =>
 
 const AgentsRegistration: React.FC = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [approvalFilter, setApprovalFilter] = useState<"all" | "approved" | "pending">("pending");
+
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("all");
@@ -65,6 +67,12 @@ const AgentsRegistration: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const { toast } = useToast();
+  // DELETE confirmation modal state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    agentId: string | null;
+    loading: boolean;
+  }>({ open: false, agentId: null, loading: false });
 
   // NEW: confirmation modal state
   const [confirming, setConfirming] = useState<{
@@ -75,6 +83,7 @@ const AgentsRegistration: React.FC = () => {
   }>({ open: false, agentId: null, newApproval: false, loading: false });
 
   // fetch agents list
+  // fetch agents list
   const fetchAgents = async (p = page) => {
     setLoading(true);
     try {
@@ -84,6 +93,14 @@ const AgentsRegistration: React.FC = () => {
       if (search) params.append("search", search);
       if (stateFilter !== "all") params.append("state", stateFilter);
       if (typeFilter !== "all") params.append("professional_type", typeFilter);
+
+      // Approval filter logic
+      if (approvalFilter === "approved") {
+        params.append("approval", "true");
+      } else if (approvalFilter === "pending") {
+        params.append("approval", "false");
+      }
+      // if "all", do not append approval => fetch all
 
       const url = `${API_BASE_URL}/api/agents/admin/agents/newlist?${params.toString()}`;
       const res = await fetch(url);
@@ -123,9 +140,11 @@ const AgentsRegistration: React.FC = () => {
     }
   };
 
+
+
   useEffect(() => {
     fetchAgents(1);
-  }, [search, stateFilter, typeFilter]);
+  }, [search, stateFilter, typeFilter, approvalFilter]);
 
   // fetch signed url helper
   const fetchSignedUrl = async (documentUrl: string) => {
@@ -274,6 +293,40 @@ const AgentsRegistration: React.FC = () => {
   const cancelConfirm = () => {
     setConfirming({ open: false, agentId: null, newApproval: false, loading: false });
   };
+const handleDeleteConfirm = async () => {
+  if (!deleteConfirm.agentId) return;
+  setDeleteConfirm((d) => ({ ...d, loading: true }));
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/agents/delete/${deleteConfirm.agentId}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error("deleteAgent non-OK:", res.status, txt);
+      throw new Error(`Failed (${res.status})`);
+    }
+
+    toast({
+      title: "Deleted",
+      description: "Agent deleted successfully and regret mail sent.",
+    });
+
+    setAgents((prev) => prev.filter((a) => String(a.id) !== String(deleteConfirm.agentId)));
+    if (selectedAgent?.id === deleteConfirm.agentId) clearView();
+  } catch (err) {
+    console.error("deleteAgent error:", err);
+    toast({
+      title: "Error",
+      description: "Failed to delete agent.",
+      variant: "destructive",
+    });
+  } finally {
+    setDeleteConfirm({ open: false, agentId: null, loading: false });
+  }
+};
+
 
   return (
     <motion.div
@@ -290,8 +343,10 @@ const AgentsRegistration: React.FC = () => {
         </p>
       </div>
 
+      {/* Search + Toggle */}
       {!selectedAgent && (
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          {/* Search Input */}
           <Input
             placeholder="Search by name, phone or email..."
             value={search}
@@ -301,8 +356,33 @@ const AgentsRegistration: React.FC = () => {
             }}
             className="w-full md:w-80"
           />
+
+          {/* Toggle Switch */}
+          <div
+            className="relative w-40 h-10 bg-gray-200 rounded-full cursor-pointer flex items-center px-1"
+            onClick={() =>
+              setApprovalFilter(approvalFilter === "pending" ? "approved" : "pending")
+            }
+          >
+            {/* Slider */}
+            <div
+              className={`absolute top-1 left-1 h-8 w-1/2 rounded-full transition-all duration-300
+          ${approvalFilter === "pending" ? "bg-yellow-400" : "bg-green-500"}`
+              }
+              style={{
+                transform: approvalFilter === "approved" ? "translateX(100%)" : "translateX(0)",
+              }}
+            ></div>
+
+            {/* Labels */}
+            <div className="flex justify-between w-full text-xs font-medium text-gray-700 z-10 px-2">
+              <span className={approvalFilter === "pending" ? "text-white" : ""}>Pending</span>
+              <span className={approvalFilter === "approved" ? "text-white" : ""}>Approved</span>
+            </div>
+          </div>
         </div>
       )}
+
 
       {/* Loading / List */}
       {loading ? (
@@ -349,12 +429,12 @@ const AgentsRegistration: React.FC = () => {
               </div>
               <div className="mt-4 sm:mt-0 flex flex-col items-end">
                 <span
-                  className={`text-sm font-medium px-3 py-1 rounded-full ${
-                    selectedAgent.approval ? "bg-green-500 text-white" : "bg-yellow-400 text-black"
-                  }`}
+                  className={`text-sm font-medium px-3 py-1 rounded-full ${selectedAgent.approval ? "bg-green-500 text-white" : "bg-yellow-400 text-black"
+                    }`}
                 >
                   {(selectedAgent.approval ? "APPROVED" : "PENDING").toUpperCase()}
                 </span>
+
               </div>
             </div>
           </div>
@@ -390,7 +470,7 @@ const AgentsRegistration: React.FC = () => {
             <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-blue-700 border-b pb-3 mb-4">Professional Details</h2>
               {Object.keys(selectedAgent)
-                .filter((key) => !["id","full_name","phone","email","created_at","approval","AadharURL","PanURL","ProfileURL"].includes(key))
+                .filter((key) => !["id", "full_name", "phone", "email", "created_at", "approval", "AadharURL", "PanURL", "ProfileURL"].includes(key))
                 .filter((key) => {
                   const val = selectedAgent[key];
                   return val !== undefined && val !== null && val !== "" && typeof val !== "object";
@@ -420,7 +500,7 @@ const AgentsRegistration: React.FC = () => {
               {(() => {
                 const docKeys = detectDocumentKeys(selectedAgent);
                 // fallback keys to show when none detected
-                const fallback = ["AadharURL", "PanURL", "ProfileURL", "pan_card_url","aadhar_card_url","profile_url"];
+                const fallback = ["AadharURL", "PanURL", "ProfileURL", "pan_card_url", "aadhar_card_url", "profile_url"];
                 const keysToRender = docKeys.length ? docKeys : fallback;
 
                 return keysToRender.map((key, idx) => {
@@ -432,7 +512,7 @@ const AgentsRegistration: React.FC = () => {
                       className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${isUploaded
                         ? "border-blue-200 bg-blue-50 hover:shadow-md"
                         : "border-gray-200 bg-gray-50 opacity-80"
-                      }`}
+                        }`}
                     >
                       <FileText className={`w-8 h-8 mb-3 ${isUploaded ? "text-blue-700" : "text-gray-400"}`} />
                       <p className="font-medium text-gray-700 mb-2 text-sm">{formatKey(key)}</p>
@@ -467,6 +547,13 @@ const AgentsRegistration: React.FC = () => {
             >
               {selectedAgent.approval ? "Unapprove" : "Approve"}
             </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteConfirm({ open: true, agentId: selectedAgent?.id ?? null, loading: false })}
+            >
+              Delete
+            </Button>
+
           </div>
         </div>
       ) : (
@@ -486,35 +573,54 @@ const AgentsRegistration: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {agents.map((agent, i) => (
-                <tr key={agent.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="px-4 py-3 border">{agent.full_name ?? "-"}</td>
-                  <td className="px-4 py-3 border">{agent.phone ?? "-"}</td>
-                  <td className="px-4 py-3 border">{agent.email ?? "-"}</td>
-                  <td className="px-4 py-3 border">{agent.professional_type ?? "-"}</td>
-                  <td className="px-4 py-3 border">{agent.state ?? "-"}</td>
-                  <td className="px-4 py-3 border">{formatDate(agent.created_at)}</td>
-                  <td className="px-4 py-3 border">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        agent.approval ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                      }`}
-                    >
-                      {agent.approval ? "Approved" : "Pending"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 border">
-                    <div className="flex items-center gap-3">
-                      <button
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                        onClick={() => fetchAgentDetails(String(agent.id))}
+              {agents
+                .filter((agent) => {
+                  // Search filter
+                  const term = search.toLowerCase();
+                  const matchesSearch =
+                    !search ||
+                    (agent.full_name?.toLowerCase().includes(term)) ||
+                    (agent.phone?.toLowerCase().includes(term)) ||
+                    (agent.email?.toLowerCase().includes(term));
+
+                  // State filter
+                  const matchesState = stateFilter === "all" || agent.state === stateFilter;
+
+                  // Type filter
+                  const matchesType =
+                    typeFilter === "all" || agent.professional_type === typeFilter;
+
+                  return matchesSearch && matchesState && matchesType;
+                })
+                .map((agent, i) => (
+
+                  <tr key={agent.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="px-4 py-3 border">{agent.full_name ?? "-"}</td>
+                    <td className="px-4 py-3 border">{agent.phone ?? "-"}</td>
+                    <td className="px-4 py-3 border">{agent.email ?? "-"}</td>
+                    <td className="px-4 py-3 border">{agent.professional_type ?? "-"}</td>
+                    <td className="px-4 py-3 border">{agent.state ?? "-"}</td>
+                    <td className="px-4 py-3 border">{formatDate(agent.created_at)}</td>
+                    <td className="px-4 py-3 border">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${agent.approval ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                          }`}
                       >
-                        View
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {agent.approval ? "Approved" : "Pending"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 border">
+                      <div className="flex items-center gap-3">
+                        <button
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          onClick={() => fetchAgentDetails(String(agent.id))}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -573,6 +679,43 @@ const AgentsRegistration: React.FC = () => {
           </div>
         </div>
       )}
+
+
+      {deleteConfirm.open && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="absolute inset-0 bg-black/40"
+      onClick={() => setDeleteConfirm({ open: false, agentId: null, loading: false })}
+      aria-hidden
+    />
+    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 z-10">
+      <h3 className="text-lg font-semibold mb-2">Confirm Delete</h3>
+      <p className="text-sm text-gray-600 mb-4">
+        Are you sure you want to delete this agent? A regret mail will be sent.
+      </p>
+
+      <div className="flex justify-end gap-3">
+        <Button
+          variant="outline"
+          onClick={() => setDeleteConfirm({ open: false, agentId: null, loading: false })}
+          disabled={deleteConfirm.loading}
+        >
+          No
+        </Button>
+        <Button onClick={handleDeleteConfirm} disabled={deleteConfirm.loading}>
+          {deleteConfirm.loading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Deleting...
+            </span>
+          ) : (
+            "Yes"
+          )}
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
+
     </motion.div>
   );
 };
