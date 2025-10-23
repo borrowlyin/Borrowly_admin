@@ -17,17 +17,12 @@ import NotFound from "./pages/NotFound";
 import ContactUs from "./pages/contactus/contactus";
 import BusinessTable from "@/pages/BusinessLoan/Business";
 import GoldTable from "@/pages/GoldLoan/gold";
-import VehicleLoanDetails from "@/pages/VehicleLoan/VehicleLoanDetails";
 import EducationTable from "./pages/EducationLoan/Education";
 import InsuranceTable from "./pages/InsuranceLoan/Insurance";
 import HomeTable from "./pages/HomeLoan/Home";
-import PersonalLoanDetails from "@/pages/PersonalLoan/PersonalLoanDetails";
-import InsuranceLoanDetails from "@/pages/InsuranceLoan/InsuranceLoanDetails"
-import BusinessLoanDetails from "@/pages/BusinessLoan/BusinessLoanDetails";
-import HomeLoanDetails from "@/pages/HomeLoan/HomeLoanDetails"
-import GoldLoanDetails from "./pages/GoldLoan/GoldLoanDetails";
-import EducationLoanDetails from "./pages/EducationLoan/EducationLoanDetails";
 import Careers from "./pages/careers/careers";
+import AgentsRegistation from "./pages/Agents/AgentsRegistation";
+
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -62,14 +57,8 @@ const App = () => (
               <Route path="PersonalTable" element={<PersonalTable />} />
               <Route path="BusinessTable" element={<BusinessTable />} />
               <Route path="VehicleTable" element={<VehicleTable />} />
-              {/* <Route path="VehicleLoanDetails" element={<VehicleLoanDetails />} />
-              <Route path="PersonalLoanDetails" element={<PersonalLoanDetails />} />
-              <Route path="BusinessLoanDetails" element={<BusinessLoanDetails />} />
-              <Route path="InsuranceLoanDetails" element={<InsuranceLoanDetails />} />
-              <Route path="HomeLoanDetails" element={<HomeLoanDetails />} />
-              <Route path="GoldLoanDetails" element={<GoldLoanDetails />} />
-              <Route path="EducationLoanDetails" element={<EducationLoanDetails />} /> */}
               <Route path="careers" element={<Careers />} />
+              <Route path="Agent" element={<AgentsRegistation />} />
 
               <Route path="GoldTable" element={<GoldTable />} />
               <Route path="EducationTable" element={<EducationTable />} />

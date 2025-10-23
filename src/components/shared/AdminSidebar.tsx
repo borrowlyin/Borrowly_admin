@@ -50,7 +50,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
 
   const mainNavigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Contact Us", href: "/contactus", icon: ContactRound },
+    { name: "Contact Us", href: "/contactus", icon: ContactRound }
   ];
 
   // Applications + Loan pages inside one dropdown
@@ -190,6 +190,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           {collapsed && <TooltipContent>Contact Us</TooltipContent>}
         </Tooltip>
         {/* Careers */}
+
+
         <Tooltip>
           <TooltipTrigger asChild>
             <NavLink
@@ -206,6 +208,24 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
             </NavLink>
           </TooltipTrigger>
           {collapsed && <TooltipContent>Careers</TooltipContent>}
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NavLink
+              to="/Agent"
+              className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+        transition-all duration-200
+        ${location.pathname === "/Agent"
+                  ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                }`}
+            >
+              <User className="w-5 h-5" />
+              {!collapsed && <span>Agents</span>}
+            </NavLink>
+          </TooltipTrigger>
+          {collapsed && <TooltipContent>Agent</TooltipContent>}
         </Tooltip>
 
 
