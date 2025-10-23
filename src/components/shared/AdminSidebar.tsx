@@ -3,13 +3,19 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
-  Package,
+  Package,        // can replace with FolderOpen or Wallet if you prefer
   ContactRound,
   Menu,
   LogOut,
   ChevronDown,
   ChevronRight,
-  Briefcase
+  Briefcase,      // used for Business Loans (and your Careers link currently)
+  User,
+  Car,
+  Coins,
+  Home,
+  ShieldCheck,
+  GraduationCap
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -49,16 +55,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
 
   // Applications + Loan pages inside one dropdown
   const loanNavigation = [
-    { name: "All Applications", href: "/applications", icon: Package },
-    { name: "Personal Loans", href: "/PersonalTable", icon: Package },
-    { name: "Vehicle Loans", href: "/VehicleTable", icon: Package },
-    { name: "Business Loans", href: "/BusinessTable", icon: Package },
-    { name: "Gold Loans", href: "/GoldTable", icon: Package },
-    { name: "Home Loans", href: "/HomeTable", icon: Package },
-    { name: "Insurance Loans", href: "/InsuranceTable", icon: Package },
-    { name: "Education Loans", href: "/EducationTable", icon: Package },
-
+    { name: "Personal Loans", href: "/PersonalTable", icon: User },
+    { name: "Vehicle Loans", href: "/VehicleTable", icon: Car },
+    { name: "Business Loans", href: "/BusinessTable", icon: Briefcase },
+    { name: "Gold Loans", href: "/GoldTable", icon: Coins },
+    { name: "Home Loans", href: "/HomeTable", icon: Home },
+    { name: "Insurance Loans", href: "/InsuranceTable", icon: ShieldCheck },
+    { name: "Education Loans", href: "/EducationTable", icon: GraduationCap },
   ];
+
 
   return (
     <motion.div
@@ -142,7 +147,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="mt-1 ml-8 space-y-1"
+              className="mt-1 ml-4 space-y-1"
             >
               {loanNavigation.map((item, index) => {
                 const isActive = location.pathname === item.href;
@@ -152,10 +157,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
                     to={item.href}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
                       ${isActive
-                        ? "bg-blue-600 text-white"
+                        ? "bg-[#00C2CC] text-white"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
                       }
-                      ${index === 0 ? "font-semibold border-b border-gray-300/40 pb-2 mb-1" : ""}
                     `}
                   >
                     <item.icon className="w-4 h-4" />
