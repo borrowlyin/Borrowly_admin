@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { UserPlus } from "lucide-react";
+
 import {
   LayoutDashboard,
   Package,        // can replace with FolderOpen or Wallet if you prefer
@@ -227,6 +229,26 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           </TooltipTrigger>
           {collapsed && <TooltipContent>Agent</TooltipContent>}
         </Tooltip>
+
+               {/* ✅ New Route for Account Creation */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NavLink
+              to="/Accountcreation"
+              className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+        transition-all duration-200
+        ${location.pathname === "/Accountcreation"
+                  ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                }`}
+            >
+              <UserPlus className="w-5 h-5" />
+              {!collapsed && <span>Account Creation</span>}
+            </NavLink>
+          </TooltipTrigger>
+          {collapsed && <TooltipContent>Account Creation</TooltipContent>}
+        </Tooltip>
+
 
 
       </nav>

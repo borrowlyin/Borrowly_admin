@@ -22,6 +22,7 @@ import InsuranceTable from "./pages/InsuranceLoan/Insurance";
 import HomeTable from "./pages/HomeLoan/Home";
 import Careers from "./pages/careers/careers";
 import AgentsRegistation from "./pages/Agents/AgentsRegistation";
+import AccountCreation from "./pages/Accountcreation/Account";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="VehicleTable" element={<VehicleTable />} />
               <Route path="careers" element={<Careers />} />
               <Route path="Agent" element={<AgentsRegistation />} />
+              <Route path="Accountcreation" element={<AccountCreation />} />
 
               <Route path="GoldTable" element={<GoldTable />} />
               <Route path="EducationTable" element={<EducationTable />} />
