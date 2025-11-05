@@ -230,7 +230,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           {collapsed && <TooltipContent>Agent</TooltipContent>}
         </Tooltip>
 
-               {/* ✅ New Route for Account Creation */}
+        {/* ✅ New Route for Account Creation */}
         <Tooltip>
           <TooltipTrigger asChild>
             <NavLink
@@ -248,7 +248,23 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           </TooltipTrigger>
           {collapsed && <TooltipContent>Account Creation</TooltipContent>}
         </Tooltip>
-
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NavLink
+              to="/BankAggregators"
+              className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+        transition-all duration-200
+        ${location.pathname === "/BankAggregators"
+                  ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                }`}
+            >
+              <Coins className="w-5 h-5" />
+              {!collapsed && <span>Bank Aggregators</span>}
+            </NavLink>
+          </TooltipTrigger>
+          {collapsed && <TooltipContent>Bank Aggregators</TooltipContent>}
+        </Tooltip>
 
 
       </nav>

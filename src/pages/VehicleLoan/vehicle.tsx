@@ -12,7 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { API_BASE_URL } from "@/lib/api";
-
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { ChevronsUpDown, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 interface LoanApplication {
   id: string;
   full_name?: string;
@@ -40,7 +47,7 @@ const VehicleTable: React.FC = () => {
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
   const limit = 10;
   const table = "vehicle_loans";
-
+  const [assignedBanks, setAssignedBanks] = useState([]);
   // ----------- Field Label Map (kept as in your original) -----------
   const fieldLabelMap: Record<string, string> = {
     fullname: "Applicant Full Name",
@@ -454,6 +461,121 @@ const VehicleTable: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
   // ------------- UI Rendering -------------
+
+
+
+  const [banks, setBanks] = useState<{ id: string; bank_name: string }[]>([]);
+  const [banksLoading, setBanksLoading] = useState(false);
+  useEffect(() => {
+    const fetchBanks = async () => {
+      setBanksLoading(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/getAllBanks`);
+        if (!res.ok) throw new Error("Failed to fetch banks");
+        const data = await res.json();
+        const list = data?.data ?? [];
+        setBanks(list);
+      } catch (err) {
+        console.error("Error fetching banks:", err);
+        toast({
+          title: "Error",
+          description: "Failed to load bank list",
+          variant: "destructive",
+        });
+      } finally {
+        setBanksLoading(false);
+      }
+    };
+
+    fetchBanks();
+  }, []);
+  const [selectedBanks, setSelectedBanks] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  const toggleBank = (bank_id) => {
+    setSelectedBanks((prev) =>
+      prev.includes(bank_id)
+        ? prev.filter((bank_id) => bank_id !== bank_id)
+        : [...prev, bank_id]
+    );
+  };
+  const handleAssign = async () => {
+    if (!selectedLoan?.id) {
+      toast({
+        title: "Error",
+        description: "No loan selected to assign.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedBanks.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one bank.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/loans/${table}/${selectedLoan.id}/assign`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          table,                        // name of table (e.g. "personal_loans")
+          loanId: selectedLoan.id,      // the loan id
+          bankIds: selectedBanks,       // array of bank ids
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to assign banks");
+
+      toast({
+        title: "Success",
+        description: `${selectedBanks.length} bank(s) assigned successfully.`,
+      });
+
+      setSelectedBanks([]); // reset after success
+    } catch (err) {
+      console.error("Error assigning loan to bank:", err);
+      toast({
+        title: "Error",
+        description: "Failed to assign bank(s). Check console for details.",
+        variant: "destructive",
+      });
+    }
+  };
+  const fetchLoanStatuses = async (loanId, loanType) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/loans/${loanType}/${loanId}/statuses`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to fetch statuses");
+
+      if (data.success) {
+        setAssignedBanks(data.data || []);
+      } else {
+        setAssignedBanks([]);
+      }
+    } catch (err) {
+      console.error("Error fetching loan statuses:", err);
+      setAssignedBanks([]);
+    }
+  };
+  useEffect(() => {
+    if (selectedLoan?.id && table) {
+      fetchLoanStatuses(selectedLoan.id, table);
+    }
+  }, [selectedLoan, table]);
+
+  const availableBanks = banks.filter(
+    (bank) => !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
+  );
   return (
     <motion.div
       className="bg-white h-[93dvh] overflow-scroll rounded-xl p-6 shadow-lg"
@@ -640,7 +762,103 @@ const VehicleTable: React.FC = () => {
                   </div>
                 </div>
               </div>
+              <div className="mt-6 border-t pt-4">
+                <h4 className="text-md font-semibold mb-2">Assign to Bank</h4>
 
+                {banksLoading ? (
+                  <p className="text-gray-500 text-sm">Loading banks...</p>
+                ) : banks.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No banks available</p>
+                ) : (
+                  <div className="flex gap-3 items-center">
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={open}
+                          className="w-64 justify-between"
+                        >
+                          {selectedBanks.length > 0
+                            ? `${selectedBanks.length} bank(s) selected`
+                            : "Select banks"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent className="w-64 p-2 max-h-60 overflow-y-auto">
+                        {(() => {
+                          // ✅ Filter out already assigned banks
+                          const availableBanks = banks.filter(
+                            (bank) =>
+                              !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
+                          );
+
+                          return availableBanks.length > 0 ? (
+                            availableBanks.map((bank) => {
+                              const bankId = bank.bank_id;
+                              const bankName = bank.bankname || bank.bank_name || bank.name;
+
+                              return (
+                                <div
+                                  key={bankId}
+                                  className={cn(
+                                    "flex items-center gap-2 p-1 rounded-md hover:bg-gray-100 cursor-pointer"
+                                  )}
+                                  onClick={() => toggleBank(bankId)}
+                                >
+                                  <Checkbox checked={selectedBanks.includes(bankId)} />
+                                  <span className="text-sm">
+                                    {bankName} ({bank.ifsccode})
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-sm text-gray-500 px-2 py-1">
+                              All banks already assigned
+                            </p>
+                          );
+                        })()}
+                      </PopoverContent>
+                    </Popover>
+
+                    <Button onClick={handleAssign} disabled={selectedBanks.length === 0}>
+                      Assign
+                    </Button>
+                  </div>
+
+                )}
+              </div>
+              {assignedBanks.length > 0 && (
+                <div className="mt-4 border-t pt-3">
+                  <h5 className="text-sm font-semibold mb-2">Assigned Banks</h5>
+                  <ul className="space-y-2">
+                    {assignedBanks.map((item) => (
+                      <li
+                        key={item.assignment_id}
+                        className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded"
+                      >
+                        <span>
+                          {item.bank_name ? `${item.bank_name} (${item.ifsccode})` : "N/A"} → {item.bank_id}
+                        </span>
+
+
+                        <span
+                          className={`px-2 py-1 text-xs rounded ${item.bank_status === "pending"
+                            ? "bg-yellow-200 text-yellow-800"
+                            : item.bank_status === "approved"
+                              ? "bg-green-200 text-green-800"
+                              : "bg-gray-200 text-gray-800"
+                            }`}
+                        >
+                          {item.bank_status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {/* Two-column layout */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Personal Details */}

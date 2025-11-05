@@ -12,7 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { API_BASE_URL } from "@/lib/api";
-
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { ChevronsUpDown, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 interface LoanApplication {
   id: string;
   full_name?: string;
@@ -43,7 +50,7 @@ const GoldTable: React.FC = () => {
   const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
   const limit = 10;
   const table = "gold_loans";
-
+  const [assignedBanks, setAssignedBanks] = useState([]);
   // Field label map (extend as needed)
   const fieldLabelMap: Record<string, string> = {
     full_name: "Full Name",
@@ -174,7 +181,7 @@ const GoldTable: React.FC = () => {
         totalCount = 0;
       }
 
-       const mapped: LoanApplication[] = data.data.map((loan: any) => ({
+      const mapped: LoanApplication[] = data.data.map((loan: any) => ({
         id: loan.id,
         full_name: loan.full_name,
         email_address: loan.email || loan.email_address || "",
@@ -302,124 +309,235 @@ const GoldTable: React.FC = () => {
   }, [page, statusFilter]);
 
 
-      const [startDate, setStartDate] = useState<string | "">("");
-      const [endDate, setEndDate] = useState<string | "">("");
-      const [downloadLoading, setDownloadLoading] = useState(false);
-  
-      // New: modal state and modal-local date fields
-      const [showDownloadModal, setShowDownloadModal] = useState(false);
-      const [modalStartDate, setModalStartDate] = useState<string>("");
-      const [modalEndDate, setModalEndDate] = useState<string>("");
-  
-  
-        // Helper: convert array of objects to CSV string
-        const jsonToCsv = (data: any[]) => {
-          if (!Array.isArray(data) || data.length === 0) return "";
-          const cols = Array.from(
-            data.reduce((acc, item) => {
-              Object.keys(item).forEach((k) => acc.add(k));
-              return acc;
-            }, new Set<string>())
-          );
-          const escapeCell = (val: any) => {
-            if (val === null || val === undefined) return "";
-            const s = String(val);
-            // wrap in quotes if contains comma, quote or newline
-            if (/[",\n]/.test(s)) {
-              return `"${s.replace(/"/g, '""')}"`;
-            }
-            return s;
-          };
-          const header = cols.join(",");
-          const rows = data.map((row) => cols.map((c) => escapeCell(row[c] ?? "")).join(","));
-          return [header, ...rows].join("\n");
-        };
-        
-      const handleDownload = async (from?: string, to?: string) => {
-        setDownloadLoading(true);
-        try {
-          const params = new URLSearchParams();
-          if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
-          if (from) params.append("startDate", from);
-          if (to) params.append("endDate", to);
-    
-          const url = `${API_BASE_URL}/api/goldloan/GoldLoanList/download?${params.toString()}`;
-          const res = await fetch(url, {
-            headers: {
-              Accept: "application/json",
-            },
-          });
-    
-          if (!res.ok) {
-            const txt = await res.text().catch(() => "");
-            console.error("download non-OK:", res.status, txt);
-            throw new Error(`Download failed: ${res.status}`);
-          }
-    
-          const payload = await res.json().catch((e) => {
-            console.error("Failed to parse download JSON:", e);
-            return null;
-          });
-    
-          // Expect server to return { message, count, loans } as in your controller
-          const loansData = payload?.loans ?? payload?.data ?? payload;
-          if (!Array.isArray(loansData) || loansData.length === 0) {
-            toast({
-              title: "No records",
-              description: "No loan records found for the selected filters.",
-              variant: "warning",
-            });
-            setDownloadLoading(false);
-            return;
-          }
-    
-          const csv = jsonToCsv(loansData);
-          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-          const filename = `Gold-loans-${from || "all"}-to-${to || "all"}-${timestamp}.csv`;
-    
-          // create link and click
-          const link = document.createElement("a");
-          const urlBlob = URL.createObjectURL(blob);
-          link.href = urlBlob;
-          link.setAttribute("download", filename);
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          URL.revokeObjectURL(urlBlob);
-    
-          toast({
-            title: "Downloaded",
-            description: `Exported ${loansData.length} records.`,
-          });
-        } catch (err) {
-          toast({
-            title: "Error",
-            description: "Failed to download list. Check console/network.",
-            variant: "destructive",
-          });
-        } finally {
-          setDownloadLoading(false);
-        }
-      };
-  
-        // New: open modal — initialize modal fields with current state values
-    const openDownloadModal = () => {
-      setModalStartDate(startDate || "");
-      setModalEndDate(endDate || "");
-      setShowDownloadModal(true);
-    };
-  
-    // New: confirm modal and trigger download
-    const confirmDownloadFromModal = async () => {
-      // Optionally set global start/end date if you want to reflect picked dates in header inputs
-      setStartDate(modalStartDate);
-      setEndDate(modalEndDate);
-      setShowDownloadModal(false);
-      await handleDownload(modalStartDate || undefined, modalEndDate || undefined);
-    };
-  
+  const [startDate, setStartDate] = useState<string | "">("");
+  const [endDate, setEndDate] = useState<string | "">("");
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
+  // New: modal state and modal-local date fields
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [modalStartDate, setModalStartDate] = useState<string>("");
+  const [modalEndDate, setModalEndDate] = useState<string>("");
+
+
+  // Helper: convert array of objects to CSV string
+  const jsonToCsv = (data: any[]) => {
+    if (!Array.isArray(data) || data.length === 0) return "";
+    const cols = Array.from(
+      data.reduce((acc, item) => {
+        Object.keys(item).forEach((k) => acc.add(k));
+        return acc;
+      }, new Set<string>())
+    );
+    const escapeCell = (val: any) => {
+      if (val === null || val === undefined) return "";
+      const s = String(val);
+      // wrap in quotes if contains comma, quote or newline
+      if (/[",\n]/.test(s)) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+    const header = cols.join(",");
+    const rows = data.map((row) => cols.map((c) => escapeCell(row[c] ?? "")).join(","));
+    return [header, ...rows].join("\n");
+  };
+
+  const handleDownload = async (from?: string, to?: string) => {
+    setDownloadLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
+      if (from) params.append("startDate", from);
+      if (to) params.append("endDate", to);
+
+      const url = `${API_BASE_URL}/api/goldloan/GoldLoanList/download?${params.toString()}`;
+      const res = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        console.error("download non-OK:", res.status, txt);
+        throw new Error(`Download failed: ${res.status}`);
+      }
+
+      const payload = await res.json().catch((e) => {
+        console.error("Failed to parse download JSON:", e);
+        return null;
+      });
+
+      // Expect server to return { message, count, loans } as in your controller
+      const loansData = payload?.loans ?? payload?.data ?? payload;
+      if (!Array.isArray(loansData) || loansData.length === 0) {
+        toast({
+          title: "No records",
+          description: "No loan records found for the selected filters.",
+          variant: "warning",
+        });
+        setDownloadLoading(false);
+        return;
+      }
+
+      const csv = jsonToCsv(loansData);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `Gold-loans-${from || "all"}-to-${to || "all"}-${timestamp}.csv`;
+
+      // create link and click
+      const link = document.createElement("a");
+      const urlBlob = URL.createObjectURL(blob);
+      link.href = urlBlob;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(urlBlob);
+
+      toast({
+        title: "Downloaded",
+        description: `Exported ${loansData.length} records.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to download list. Check console/network.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  // New: open modal — initialize modal fields with current state values
+  const openDownloadModal = () => {
+    setModalStartDate(startDate || "");
+    setModalEndDate(endDate || "");
+    setShowDownloadModal(true);
+  };
+
+  // New: confirm modal and trigger download
+  const confirmDownloadFromModal = async () => {
+    // Optionally set global start/end date if you want to reflect picked dates in header inputs
+    setStartDate(modalStartDate);
+    setEndDate(modalEndDate);
+    setShowDownloadModal(false);
+    await handleDownload(modalStartDate || undefined, modalEndDate || undefined);
+  };
+
+  const [banks, setBanks] = useState<{ id: string; bank_name: string }[]>([]);
+  const [banksLoading, setBanksLoading] = useState(false);
+  useEffect(() => {
+    const fetchBanks = async () => {
+      setBanksLoading(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/getAllBanks`);
+        if (!res.ok) throw new Error("Failed to fetch banks");
+        const data = await res.json();
+        const list = data?.data ?? [];
+        setBanks(list);
+      } catch (err) {
+        console.error("Error fetching banks:", err);
+        toast({
+          title: "Error",
+          description: "Failed to load bank list",
+          variant: "destructive",
+        });
+      } finally {
+        setBanksLoading(false);
+      }
+    };
+
+    fetchBanks();
+  }, []);
+  const [selectedBanks, setSelectedBanks] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  const toggleBank = (bank_id) => {
+    setSelectedBanks((prev) =>
+      prev.includes(bank_id)
+        ? prev.filter((bank_id) => bank_id !== bank_id)
+        : [...prev, bank_id]
+    );
+  };
+  const handleAssign = async () => {
+    if (!selectedLoan?.id) {
+      toast({
+        title: "Error",
+        description: "No loan selected to assign.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedBanks.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one bank.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/loans/${table}/${selectedLoan.id}/assign`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          table,                        // name of table (e.g. "personal_loans")
+          loanId: selectedLoan.id,      // the loan id
+          bankIds: selectedBanks,       // array of bank ids
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to assign banks");
+
+      toast({
+        title: "Success",
+        description: `${selectedBanks.length} bank(s) assigned successfully.`,
+      });
+
+      setSelectedBanks([]); // reset after success
+    } catch (err) {
+      console.error("Error assigning loan to bank:", err);
+      toast({
+        title: "Error",
+        description: "Failed to assign bank(s). Check console for details.",
+        variant: "destructive",
+      });
+    }
+  };
+  const fetchLoanStatuses = async (loanId, loanType) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/loans/${loanType}/${loanId}/statuses`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to fetch statuses");
+
+      if (data.success) {
+        setAssignedBanks(data.data || []);
+      } else {
+        setAssignedBanks([]);
+      }
+    } catch (err) {
+      console.error("Error fetching loan statuses:", err);
+      setAssignedBanks([]);
+    }
+  };
+  useEffect(() => {
+    if (selectedLoan?.id && table) {
+      fetchLoanStatuses(selectedLoan.id, table);
+    }
+  }, [selectedLoan, table]);
+
+  const availableBanks = banks.filter(
+    (bank) => !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
+  );
   return (
     <motion.div
       className="bg-white h-[93dvh] overflow-scroll rounded-xl p-6 shadow-lg"
@@ -467,81 +585,81 @@ const GoldTable: React.FC = () => {
                 <SelectItem value="cancel">Cancel</SelectItem>
               </SelectContent>
             </Select>
-             <div>
-                                      <Button
-                                        onClick={openDownloadModal}
-                                        disabled={downloadLoading}
-                                        title="Download filtered loan list"
-                                      >
-                                        {downloadLoading ? (
-                                          <>
-                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                            Downloading...
-                                          </>
-                                        ) : (
-                                          "Download"
-                                        )}
-                                      </Button>
-                                    </div>
+            <div>
+              <Button
+                onClick={openDownloadModal}
+                disabled={downloadLoading}
+                title="Download filtered loan list"
+              >
+                {downloadLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Downloading...
+                  </>
+                ) : (
+                  "Download"
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {showDownloadModal && (
-                    // overlay
-                    <div className="fixed inset-0 z-50 flex items-center justify-center">
-                      <div
-                        className="absolute inset-0 bg-black/40"
-                        onClick={() => setShowDownloadModal(false)}
-                        aria-hidden
-                      />
-                      <div className="relative bg-white rounded-lg shadow-lg w-[95%] max-w-md p-5 z-10">
-                        <h3 className="text-lg font-semibold mb-3">Export Loan List</h3>
-                        <p className="text-sm text-gray-600 mb-4">Choose a date range to export (optional).</p>
-            
-                        <div className="grid gap-3">
-                          <label className="text-xs text-gray-700">
-                            Start date
-                            <input
-                              type="date"
-                              value={modalStartDate}
-                              onChange={(e) => setModalStartDate(e.target.value)}
-                              className="mt-1 w-full border px-2 py-1 rounded text-sm"
-                            />
-                          </label>
-            
-                          <label className="text-xs text-gray-700">
-                            End date
-                            <input
-                              type="date"
-                              value={modalEndDate}
-                              onChange={(e) => setModalEndDate(e.target.value)}
-                              className="mt-1 w-full border px-2 py-1 rounded text-sm"
-                            />
-                          </label>
-                        </div>
-            
-                        <div className="flex justify-end gap-3 mt-4">
-                          <Button variant="outline" onClick={() => setShowDownloadModal(false)}>
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={confirmDownloadFromModal}
-                            disabled={downloadLoading}
-                          >
-                            {downloadLoading ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                Downloading...
-                              </>
-                            ) : (
-                              "Confirm & Download"
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+        // overlay
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowDownloadModal(false)}
+            aria-hidden
+          />
+          <div className="relative bg-white rounded-lg shadow-lg w-[95%] max-w-md p-5 z-10">
+            <h3 className="text-lg font-semibold mb-3">Export Loan List</h3>
+            <p className="text-sm text-gray-600 mb-4">Choose a date range to export (optional).</p>
+
+            <div className="grid gap-3">
+              <label className="text-xs text-gray-700">
+                Start date
+                <input
+                  type="date"
+                  value={modalStartDate}
+                  onChange={(e) => setModalStartDate(e.target.value)}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-700">
+                End date
+                <input
+                  type="date"
+                  value={modalEndDate}
+                  onChange={(e) => setModalEndDate(e.target.value)}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-4">
+              <Button variant="outline" onClick={() => setShowDownloadModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDownloadFromModal}
+                disabled={downloadLoading}
+              >
+                {downloadLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Downloading...
+                  </>
+                ) : (
+                  "Confirm & Download"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading ? (
@@ -552,218 +670,314 @@ const GoldTable: React.FC = () => {
           </div>
         </div>
       ) : // details loader when viewing
-      viewingLoanId && detailsLoading ? (
-        <div className="flex justify-center items-center h-[60vh]">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
-            <p className="text-gray-600">Loading application...</p>
+        viewingLoanId && detailsLoading ? (
+          <div className="flex justify-center items-center h-[60vh]">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+              <p className="text-gray-600">Loading application...</p>
+            </div>
           </div>
-        </div>
-      ) : // Details view
-      selectedLoan ? (
-        <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={clearView}
-              className="flex items-center gap-2 border-blue-500 text-blue-600 hover:bg-blue-600 hover:text-white transition"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back
-            </Button>
-            <h1 className="text-3xl font-semibold text-gray-800 tracking-tight">
-              Gold Loan Application Details
-            </h1>
-          </div>
-
-          {/* Blue Gradient Header */}
-          <div className="bg-gradient-to-r from-blue-800 via-blue-600 to-sky-400 text-white p-6 rounded-2xl shadow-lg">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-              <div>
-                <h2 className="text-xl font-semibold">
-                  {selectedLoan.full_name || selectedLoan.fullName || "-"}
-                </h2>
-                <p className="text-sm opacity-90">
-                  {selectedLoan.email_address || selectedLoan.email || ""}
-                </p>
-              </div>
-              <div className="mt-4 sm:mt-0 flex flex-col items-end">
-                <span
-                  className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
-                    ? "bg-green-500 text-white"
-                    : selectedLoan.status === "rejected"
-                      ? "bg-red-500 text-white"
-                      : "bg-yellow-400 text-black"
-                    }`}
+        ) : // Details view
+          selectedLoan ? (
+            <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  onClick={clearView}
+                  className="flex items-center gap-2 border-blue-500 text-blue-600 hover:bg-blue-600 hover:text-white transition"
                 >
-                  {(selectedLoan.status || "pending").toUpperCase()}
-                </span>
-                {selectedLoan.reason && (
-                  <p className="text-xs mt-2 italic opacity-90">{selectedLoan.reason}</p>
-                )}
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </Button>
+                <h1 className="text-3xl font-semibold text-gray-800 tracking-tight">
+                  Gold Loan Application Details
+                </h1>
               </div>
-            </div>
-          </div>
 
-          {/* Two-column layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Personal Details */}
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-blue-700 border-b pb-3 mb-4">Personal Details</h2>
-              {personalDetailsKeys.map((k) => k).filter((k) => selectedLoan[k] !== undefined).length === 0 ? (
-                <p className="text-gray-500 text-sm">No personal details available.</p>
-              ) : (
-                <dl className="grid grid-cols-1 divide-y divide-gray-100">
-                  {personalDetailsKeys
-                    .map((key) => [key, selectedLoan[key] ?? selectedLoan[key.replace(/_/g, "")]])
-                    .filter(([_, value]) => value !== undefined)
-                    .map(([key, value]) => (
-                      <div
-                        key={String(key)}
-                        className="flex justify-between items-center py-3 px-2 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100"
-                      >
-                        <dt className="font-medium text-gray-700">{formatKey(String(key))}:</dt>
-                        <dd className="text-gray-900 text-right">{String(value ?? "-")}</dd>
-                      </div>
-                    ))}
-                </dl>
-              )}
-            </section>
-
-            {/* Loan Details */}
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-blue-700 border-b pb-3 mb-4">Loan Details</h2>
-              {Object.keys(selectedLoan)
-                .filter((key) => !excludedKeys.includes(key))
-                .map((key) => [key, selectedLoan[key]])
-                .length === 0 ? (
-                <p className="text-gray-500 text-sm">No basic details available.</p>
-              ) : (
-                <dl className="grid grid-cols-1 divide-y divide-gray-100">
-                  {Object.keys(selectedLoan)
-                    .filter((key) => !excludedKeys.includes(key))
-                    .map((key) => (
-                      <div
-                        key={key}
-                        className="flex justify-between items-center py-3 px-2 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100"
-                      >
-                        <dt className="font-medium text-gray-700">{formatKey(key)}:</dt>
-                        <dd className="text-gray-900 text-right">
-                          {key === "amount"
-                            ? (Number(selectedLoan[key]) ? `₹${Number(selectedLoan[key]).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : String(selectedLoan[key] ?? "-"))
-                            : String(selectedLoan[key] ?? "-")}
-                        </dd>
-                      </div>
-                    ))}
-                </dl>
-              )}
-            </section>
-          </div>
-
-          {/* Documents */}
-          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex justify-between items-center border-b pb-3 mb-4">
-              <h2 className="text-lg font-semibold text-blue-700">Uploaded Documents</h2>
-              <span className="text-sm text-gray-500">
-                {`${documentsKeys.filter(k => selectedLoan[k]).length} / ${documentsKeys.length} Uploaded`}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {documentsKeys.map((key, idx) => {
-                const value = selectedLoan[key];
-                const isUploaded = Boolean(value);
-                return (
-                  <div
-                    key={idx}
-                    className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${isUploaded
-                      ? "border-blue-200 bg-blue-50 hover:shadow-md"
-                      : "border-gray-200 bg-gray-50 opacity-80"
-                      }`}
-                  >
-                    <FileText
-                      className={`w-8 h-8 mb-3 ${isUploaded ? "text-blue-700" : "text-gray-400"}`}
-                    />
-                    <p className="font-medium text-gray-700 mb-2 text-sm">{formatKey(key)}</p>
-                    {isUploaded ? (
-                      <button
-                        onClick={async () => {
-                          const signed = await fetchSignedUrl(value);
-                          if (signed) window.open(signed, "_blank");
-                        }}
-                        className="text-blue-600 text-sm font-semibold hover:underline"
-                      >
-                        View Document
-                      </button>
-                    ) : (
-                      <span className="text-gray-500 text-sm italic">Not Uploaded</span>
+              {/* Blue Gradient Header */}
+              <div className="bg-gradient-to-r from-blue-800 via-blue-600 to-sky-400 text-white p-6 rounded-2xl shadow-lg">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                  <div>
+                    <h2 className="text-xl font-semibold">
+                      {selectedLoan.full_name || selectedLoan.fullName || "-"}
+                    </h2>
+                    <p className="text-sm opacity-90">
+                      {selectedLoan.email_address || selectedLoan.email || ""}
+                    </p>
+                  </div>
+                  <div className="mt-4 sm:mt-0 flex flex-col items-end">
+                    <span
+                      className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
+                        ? "bg-green-500 text-white"
+                        : selectedLoan.status === "rejected"
+                          ? "bg-red-500 text-white"
+                          : "bg-yellow-400 text-black"
+                        }`}
+                    >
+                      {(selectedLoan.status || "pending").toUpperCase()}
+                    </span>
+                    {selectedLoan.reason && (
+                      <p className="text-xs mt-2 italic opacity-90">{selectedLoan.reason}</p>
                     )}
                   </div>
-                );
-              })}
+                </div>
+              </div>
+<div className="mt-6 border-t pt-4">
+            <h4 className="text-md font-semibold mb-2">Assign to Bank</h4>
+
+            {banksLoading ? (
+              <p className="text-gray-500 text-sm">Loading banks...</p>
+            ) : banks.length === 0 ? (
+              <p className="text-gray-500 text-sm">No banks available</p>
+            ) : (
+              <div className="flex gap-3 items-center">
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open}
+                      className="w-64 justify-between"
+                    >
+                      {selectedBanks.length > 0
+                        ? `${selectedBanks.length} bank(s) selected`
+                        : "Select banks"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-64 p-2 max-h-60 overflow-y-auto">
+                    {(() => {
+                      // ✅ Filter out already assigned banks
+                      const availableBanks = banks.filter(
+                        (bank) =>
+                          !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
+                      );
+
+                      return availableBanks.length > 0 ? (
+                        availableBanks.map((bank) => {
+                          const bankId = bank.bank_id;
+                          const bankName = bank.bankname || bank.bank_name || bank.name;
+
+                          return (
+                            <div
+                              key={bankId}
+                              className={cn(
+                                "flex items-center gap-2 p-1 rounded-md hover:bg-gray-100 cursor-pointer"
+                              )}
+                              onClick={() => toggleBank(bankId)}
+                            >
+                              <Checkbox checked={selectedBanks.includes(bankId)} />
+                              <span className="text-sm">
+                                {bankName} ({bank.ifsccode})
+                              </span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-sm text-gray-500 px-2 py-1">
+                          All banks already assigned
+                        </p>
+                      );
+                    })()}
+                  </PopoverContent>
+                </Popover>
+
+                <Button onClick={handleAssign} disabled={selectedBanks.length === 0}>
+                  Assign
+                </Button>
+              </div>
+
+            )}
+          </div>
+          {assignedBanks.length > 0 && (
+            <div className="mt-4 border-t pt-3">
+              <h5 className="text-sm font-semibold mb-2">Assigned Banks</h5>
+              <ul className="space-y-2">
+                {assignedBanks.map((item) => (
+                  <li
+                    key={item.assignment_id}
+                    className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded"
+                  >
+                    <span>
+                      {item.bank_name ? `${item.bank_name} (${item.ifsccode})` : "N/A"} → {item.bank_id}
+                    </span>
+
+
+                    <span
+                      className={`px-2 py-1 text-xs rounded ${item.bank_status === "pending"
+                        ? "bg-yellow-200 text-yellow-800"
+                        : item.bank_status === "approved"
+                          ? "bg-green-200 text-green-800"
+                          : "bg-gray-200 text-gray-800"
+                        }`}
+                    >
+                      {item.bank_status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </section>
-        </div>
-      ) : (
-        // Table list (visible when not viewing a specific loan)
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full border-collapse">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="text-left p-3">Name</th>
-                <th className="text-left p-3">Phone</th>
-                
-                <th className="text-left p-3">Amount</th>
-                <th className="text-left p-3">Status</th>
-                <th className="text-left p-3">Created</th>
-                <th className="text-left p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loans.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-gray-500">
-                    No loans found.
-                  </td>
-                </tr>
-              ) : (
-                loans.map((loan) => (
-                  <tr key={loan.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-3">{loan.full_name || "-"}</td>
-                    <td className="p-3">{loan.mobile || "-"}</td>
-                     <td className="p-3">
-                      {Number(loan.amount)
-                        ? `₹${Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-                        : String(loan.amount ?? "-")}
-                    </td>
-                    <td className="p-3">
-                      <Select
-                        value={(loan.status || "pending").toLowerCase()}
-                        onValueChange={(val) => updateLoanStatus(loan.id, val)}
+          )}
+              {/* Two-column layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Personal Details */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                  <h2 className="text-lg font-semibold text-blue-700 border-b pb-3 mb-4">Personal Details</h2>
+                  {personalDetailsKeys.map((k) => k).filter((k) => selectedLoan[k] !== undefined).length === 0 ? (
+                    <p className="text-gray-500 text-sm">No personal details available.</p>
+                  ) : (
+                    <dl className="grid grid-cols-1 divide-y divide-gray-100">
+                      {personalDetailsKeys
+                        .map((key) => [key, selectedLoan[key] ?? selectedLoan[key.replace(/_/g, "")]])
+                        .filter(([_, value]) => value !== undefined)
+                        .map(([key, value]) => (
+                          <div
+                            key={String(key)}
+                            className="flex justify-between items-center py-3 px-2 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100"
+                          >
+                            <dt className="font-medium text-gray-700">{formatKey(String(key))}:</dt>
+                            <dd className="text-gray-900 text-right">{String(value ?? "-")}</dd>
+                          </div>
+                        ))}
+                    </dl>
+                  )}
+                </section>
+
+                {/* Loan Details */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                  <h2 className="text-lg font-semibold text-blue-700 border-b pb-3 mb-4">Loan Details</h2>
+                  {Object.keys(selectedLoan)
+                    .filter((key) => !excludedKeys.includes(key))
+                    .map((key) => [key, selectedLoan[key]])
+                    .length === 0 ? (
+                    <p className="text-gray-500 text-sm">No basic details available.</p>
+                  ) : (
+                    <dl className="grid grid-cols-1 divide-y divide-gray-100">
+                      {Object.keys(selectedLoan)
+                        .filter((key) => !excludedKeys.includes(key))
+                        .map((key) => (
+                          <div
+                            key={key}
+                            className="flex justify-between items-center py-3 px-2 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100"
+                          >
+                            <dt className="font-medium text-gray-700">{formatKey(key)}:</dt>
+                            <dd className="text-gray-900 text-right">
+                              {key === "amount"
+                                ? (Number(selectedLoan[key]) ? `₹${Number(selectedLoan[key]).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : String(selectedLoan[key] ?? "-"))
+                                : String(selectedLoan[key] ?? "-")}
+                            </dd>
+                          </div>
+                        ))}
+                    </dl>
+                  )}
+                </section>
+              </div>
+
+              {/* Documents */}
+              <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                  <h2 className="text-lg font-semibold text-blue-700">Uploaded Documents</h2>
+                  <span className="text-sm text-gray-500">
+                    {`${documentsKeys.filter(k => selectedLoan[k]).length} / ${documentsKeys.length} Uploaded`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {documentsKeys.map((key, idx) => {
+                    const value = selectedLoan[key];
+                    const isUploaded = Boolean(value);
+                    return (
+                      <div
+                        key={idx}
+                        className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${isUploaded
+                          ? "border-blue-200 bg-blue-50 hover:shadow-md"
+                          : "border-gray-200 bg-gray-50 opacity-80"
+                          }`}
                       >
-                        <SelectTrigger className={loan.status + " max-w-[150px]"}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                          <SelectItem value="cancel">Cancel</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                   
-                    <td className="p-3">{formatDate(loan.created_at)}</td>
-                    <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
-                      <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
-                    </td>
+                        <FileText
+                          className={`w-8 h-8 mb-3 ${isUploaded ? "text-blue-700" : "text-gray-400"}`}
+                        />
+                        <p className="font-medium text-gray-700 mb-2 text-sm">{formatKey(key)}</p>
+                        {isUploaded ? (
+                          <button
+                            onClick={async () => {
+                              const signed = await fetchSignedUrl(value);
+                              if (signed) window.open(signed, "_blank");
+                            }}
+                            className="text-blue-600 text-sm font-semibold hover:underline"
+                          >
+                            View Document
+                          </button>
+                        ) : (
+                          <span className="text-gray-500 text-sm italic">Not Uploaded</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          ) : (
+            // Table list (visible when not viewing a specific loan)
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full border-collapse">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="text-left p-3">Name</th>
+                    <th className="text-left p-3">Phone</th>
+
+                    <th className="text-left p-3">Amount</th>
+                    <th className="text-left p-3">Status</th>
+                    <th className="text-left p-3">Created</th>
+                    <th className="text-left p-3">Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                </thead>
+                <tbody>
+                  {loans.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-gray-500">
+                        No loans found.
+                      </td>
+                    </tr>
+                  ) : (
+                    loans.map((loan) => (
+                      <tr key={loan.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="p-3">{loan.full_name || "-"}</td>
+                        <td className="p-3">{loan.mobile || "-"}</td>
+                        <td className="p-3">
+                          {Number(loan.amount)
+                            ? `₹${Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            : String(loan.amount ?? "-")}
+                        </td>
+                        <td className="p-3">
+                          <Select
+                            value={(loan.status || "pending").toLowerCase()}
+                            onValueChange={(val) => updateLoanStatus(loan.id, val)}
+                          >
+                            <SelectTrigger className={loan.status + " max-w-[150px]"}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                              <SelectItem value="cancel">Cancel</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+
+                        <td className="p-3">{formatDate(loan.created_at)}</td>
+                        <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                          <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
       {/* Pagination — hidden while viewing a loan */}
       {!viewingLoanId && (

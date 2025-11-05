@@ -23,7 +23,7 @@ import HomeTable from "./pages/HomeLoan/Home";
 import Careers from "./pages/careers/careers";
 import AgentsRegistation from "./pages/Agents/AgentsRegistation";
 import AccountCreation from "./pages/Accountcreation/Account";
-
+import BankAggregators from "./pages/BankAggregators/bankaggregators";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -61,7 +61,7 @@ const App = () => (
               <Route path="careers" element={<Careers />} />
               <Route path="Agent" element={<AgentsRegistation />} />
               <Route path="Accountcreation" element={<AccountCreation />} />
-
+              <Route path="BankAggregators" element={<BankAggregators />} />
               <Route path="GoldTable" element={<GoldTable />} />
               <Route path="EducationTable" element={<EducationTable />} />
               <Route path="InsuranceTable" element={<InsuranceTable />} />
