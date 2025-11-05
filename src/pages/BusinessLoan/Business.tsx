@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
-import { Loader2, ArrowLeft, RefreshCw } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,36 @@ const formatKey = (key: string) =>
 
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
+
+// Document fields for business loans
+const documentsKeys = [
+  "pan_url",
+  "aadhaar_url"
+];
+
+// Signed URL helper
+const fetchSignedUrl = async (documentUrl: string, toast: any) => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/files/sign-urls`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ urls: [documentUrl] }),
+    });
+    if (!res.ok) throw new Error("Failed to fetch signed URL");
+    const data = await res.json();
+    return data.signedUrls?.[0] ?? null;
+  } catch (error) {
+    console.error("fetchSignedUrl error:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load document.",
+      variant: "destructive",
+    });
+    return null;
+  }
+};
 
 const BusinessTable: React.FC = () => {
   const [search, setSearch] = useState("");
@@ -685,7 +715,11 @@ const BusinessTable: React.FC = () => {
                 <h5 className="font-semibold text-sm text-gray-700 mb-3">Application Information</h5>
                 <dl className="grid grid-cols-1 gap-2">
                   {Object.entries(selectedLoan)
-                    .filter(([k, v]) => !["id", "created_at", "updated_at"].includes(k) && v != null && v !== "" && typeof v !== "object")
+                    .filter(([k, v]) => {
+                      const excludeFields = ["id", "created_at", "updated_at", "generateduserid", "panurl", "adharurl", "pan_card_url", "aadhar_card_url", "pan_url", "aadhaar_url"];
+                      const isUrl = typeof v === "string" && (v.includes("storage.googleapis.com") || v.startsWith("http"));
+                      return !excludeFields.includes(k) && !isUrl && v != null && v !== "" && typeof v !== "object";
+                    })
                     .map(([k, v]) => (
                       <div key={k} className="flex justify-between items-center py-2 px-2 rounded">
                         <dt className="text-sm text-gray-600">{formatKey(k)}:</dt>
@@ -693,6 +727,51 @@ const BusinessTable: React.FC = () => {
                       </div>
                     ))}
                 </dl>
+              </section>
+
+              {/* Uploaded Documents */}
+              <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                  <h2 className="text-lg font-semibold text-blue-700">Uploaded Documents</h2>
+                  <span className="text-sm text-gray-500">
+                    {`${documentsKeys.filter(k => selectedLoan[k]).length} / ${documentsKeys.length} Uploaded`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {documentsKeys.map((key, idx) => {
+                    const value = selectedLoan[key];
+                    const isUploaded = Boolean(value);
+                    return (
+                      <div
+                        key={idx}
+                        className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${
+                          isUploaded
+                            ? "border-blue-200 bg-blue-50 hover:shadow-md"
+                            : "border-gray-200 bg-gray-50 opacity-80"
+                        }`}
+                      >
+                        <FileText
+                          className={`w-8 h-8 mb-3 ${isUploaded ? "text-blue-700" : "text-gray-400"}`}
+                        />
+                        <p className="font-medium text-gray-700 mb-2 text-sm">{formatKey(key)}</p>
+                        {isUploaded ? (
+                          <button
+                            onClick={async () => {
+                              const signed = await fetchSignedUrl(value, toast);
+                              if (signed) window.open(signed, "_blank");
+                            }}
+                            className="text-blue-600 text-sm font-semibold hover:underline"
+                          >
+                            View Document
+                          </button>
+                        ) : (
+                          <span className="text-gray-500 text-sm italic">Not Uploaded</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </section>
             </div>
           )}

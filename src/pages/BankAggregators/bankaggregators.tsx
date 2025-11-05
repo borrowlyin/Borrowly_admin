@@ -317,7 +317,9 @@ const BankList = () => {
                     <button
                       onClick={async () => {
                         const signed = await fetchSignedUrl(value);
-                        if (signed) window.open(signed, "_blank");
+                        if (signed) {
+                          window.open(signed, '_blank');
+                        }
                       }}
                       className="text-blue-600 text-sm font-semibold hover:underline"
                     >
