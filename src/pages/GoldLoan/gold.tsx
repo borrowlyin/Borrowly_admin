@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Info, Loader2, ArrowLeft, FileText } from "lucide-react";
+import { Info, Loader2, ArrowLeft, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/popover";
 import { ChevronsUpDown, Check } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useGoldLoanCache } from "@/hooks/useGoldLoanCache";
 interface LoanApplication {
   id: string;
   full_name?: string;
@@ -37,20 +38,21 @@ interface LoanApplication {
 
 const GoldTable: React.FC = () => {
   const { toast } = useToast();
-  const [loans, setLoans] = useState<LoanApplication[]>([]);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedLoan, setSelectedLoan] = useState<any | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
-  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
-  const limit = 10;
   const table = "gold_loans";
   const [assignedBanks, setAssignedBanks] = useState([]);
+  
+  const { data, loading, error, refresh, isRefreshing } = useGoldLoanCache(page, search, statusFilter);
+  const lastUpdated = data?.timestamp;
+  
+  const loans = data?.loans || [];
+  const total = data?.total || 0;
+  const totalPages = data?.totalPages || 1;
   // Field label map (extend as needed)
   const fieldLabelMap: Record<string, string> = {
     full_name: "Full Name",
@@ -134,87 +136,15 @@ const GoldTable: React.FC = () => {
     }
   };
 
-  // Robust fetchLoans that tolerates multiple response shapes
-  const fetchLoans = async (p = page) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("table", table);
-      params.append("page", String(p));
-      params.append("limit", String(limit));
-      if (search) params.append("search", search);
-      if (statusFilter !== "all") params.append("status", statusFilter);
-
-      const res = await fetch(`${API_BASE_URL}/api/loans?${params.toString()}`);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("fetchLoans non-OK:", res.status, res.statusText, txt);
-        throw new Error(`Server returned ${res.status}`);
-      }
-
-      const data = await res.json().catch((e) => {
-        console.error("Failed to parse JSON:", e);
-        return null;
-      });
-
-      let items: any[] = [];
-      let totalCount = 0;
-      let serverPage = p;
-      let serverTotalPages = 1;
-
-      if (Array.isArray(data)) {
-        items = data;
-        totalCount = data.length;
-      } else if (data && Array.isArray(data.data)) {
-        items = data.data;
-        totalCount = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(totalCount / limit)));
-      } else if (data && Array.isArray(data.items)) {
-        items = data.items;
-        totalCount = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(totalCount / limit)));
-      } else {
-        console.warn("Unexpected response shape for gold loans:", data);
-        items = [];
-        totalCount = 0;
-      }
-
-      const mapped: LoanApplication[] = data.data.map((loan: any) => ({
-        id: loan.id,
-        full_name: loan.full_name,
-        email_address: loan.email || loan.email_address || "",
-        mobile: loan.mobile || loan.phone || "",
-        amount: loan.loan_amount || "N/A",
-        status: loan.status,
-        status_reason: loan.reason || loan.status_reason || "",
-        created_at: loan.created_at || loan.date || "",
-        pan_card_url: loan.pan_card_url || "",
-        aadhar_card_url: loan.aadhar_card_url || "",
-      }));
-
-      setAllLoans(mapped);
-      // client-side filter & search applied below (and also from server)
-      setLoans(mapped);
-      setTotal(totalCount);
-      setTotalPages(Math.max(1, serverTotalPages));
-      setPage(Math.min(Math.max(1, serverPage), Math.max(1, serverTotalPages)));
-    } catch (error: any) {
-      console.error("fetchLoans error:", error);
+  useEffect(() => {
+    if (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch loans. Check console/network for details.",
+        description: error,
         variant: "destructive",
       });
-      setLoans([]);
-      setAllLoans([]);
-      setTotal(0);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [error, toast]);
 
   const fetchLoanDetails = async (id: string) => {
     setViewingLoanId(id);
@@ -266,9 +196,8 @@ const GoldTable: React.FC = () => {
       }
       const data = await res.json().catch(() => null);
 
-      // optimistic update locally
-      setLoans((prev) => prev.map((l) => (l.id === loanId ? { ...l, status: newStatus } : l)));
       if (selectedLoan?.id === loanId) setSelectedLoan((s: any) => (s ? { ...s, status: newStatus } : s));
+      refresh(); // Refresh cached data
 
       toast({
         title: "Status Updated",
@@ -284,29 +213,7 @@ const GoldTable: React.FC = () => {
     }
   };
 
-  // client-side filtering when allLoans changes / search / statusFilter
-  useEffect(() => {
-    let filtered = [...allLoans];
 
-    if (search.trim()) {
-      filtered = filtered.filter((loan) =>
-        (loan.full_name ?? "").toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(
-        (loan) => String(loan.status ?? "").toLowerCase() === statusFilter.toLowerCase()
-      );
-    }
-
-    setLoans(filtered);
-  }, [search, statusFilter, allLoans]);
-
-  useEffect(() => {
-    fetchLoans(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter]);
 
 
   const [startDate, setStartDate] = useState<string | "">("");
@@ -551,6 +458,27 @@ const GoldTable: React.FC = () => {
           Manage gold loan applications. Verify documents, view details and update application status.
         </p>
       </div>
+
+      {/* Cache Status Indicator */}
+      {lastUpdated && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+            </div>
+            <button
+              onClick={refresh}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls — hidden while viewing a loan */}
       {!viewingLoanId && (
@@ -951,20 +879,20 @@ const GoldTable: React.FC = () => {
                             : String(loan.amount ?? "-")}
                         </td>
                         <td className="p-3">
-                          <Select
-                            value={(loan.status || "pending").toLowerCase()}
-                            onValueChange={(val) => updateLoanStatus(loan.id, val)}
-                          >
-                            <SelectTrigger className={loan.status + " max-w-[150px]"}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="cancel">Cancel</SelectItem>
-                            </SelectContent>
-                          </Select>
+                         <span
+  className={`px-2 py-1 rounded text-xs font-medium ${
+    loan.status === "approved"
+      ? "bg-green-100 text-green-800"
+      : loan.status === "rejected"
+      ? "bg-red-100 text-red-800"
+      : loan.status === "cancel"
+      ? "bg-gray-100 text-gray-800"
+      : "bg-yellow-100 text-yellow-800"
+  }`}
+>
+  {(loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1)}
+</span>
+
                         </td>
 
                         <td className="p-3">{formatDate(loan.created_at)}</td>

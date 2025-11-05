@@ -202,122 +202,146 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen flex">
+      {/* Left Side - Quotes */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md"
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#1E6592] to-[#001F47] flex-col justify-center items-center p-12 text-white"
       >
-        <div className="text-center mb-8">
-          <img src="/Images/CompanyLogo.jpeg" alt="" className="w-[110px] pb-3 mx-auto" />
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1E6592] to-[#001F47] bg-clip-text text-transparent">
-            Admin
-          </h1>
-          <p className="text-gray-500 text-[14px] mt-2">
-  Sign in to access the Borrowly loan administration dashboard
-</p>
-
+        <div className="max-w-md text-center space-y-8">
+          <img src="/Images/CompanyLogo.jpeg" alt="Borrowly" className="w-32 rounded-full mx-auto mb-8" />
+          <div className="space-y-3">
+            <blockquote className="text-2xl font-bold">
+              "Empowering financial dreams through seamless loan management."
+            </blockquote>
+            <p className="text-[16px] opacity-90">
+              Streamline your loan administration with our comprehensive dashboard.
+            </p>
+          </div>
         </div>
-
-        {error && (
-          <Alert variant={getErrorVariant(error.type) as any} className="mb-6">
-            {getErrorIcon(error.type)}
-            <AlertDescription>{error.message}</AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (error) clearError();
-                }}
-                className="pl-10"
-                placeholder="admin@Borrowly.in"
-                required
-                disabled={isLoading}
-              />
-              {errors.email && <div className="text-red-500 text-xs">{errors.email}</div>}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (error) clearError();
-                }}
-                className="pl-10 pr-10"
-                placeholder="Enter your password"
-                required
-                disabled={isLoading}
-              />
-              {errors.password && <div className="text-red-500 text-xs">{errors.password}</div>}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={isLoading}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </Button>
-            </div>
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={() => {
-                  setForgotOpen(true);
-                  setForgotStep(1);
-                  setForgotEmail("");
-                  setForgotOtp("");
-                  setForgotNewPassword("");
-                  setForgotConfirmPassword("");
-                  setForgotError("");
-                  setForgotSuccess("");
-                }}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Forgot password?
-              </button>
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-gradient-to-r from-[#1E6592] to-[#001F47] hover:from-[#1E6592] hover:to-[#001F47] text-white font-medium py-4 px-4 rounded-lg transition-all duration-200"
-          >
-            {isLoading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Signing in...</span>
-              </div>
-            ) : (
-              "Sign In"
-            )}
-          </Button>
-        </form>       
       </motion.div>
+
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 p-8">
+        <motion.div
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md"
+        >
+          <div className="text-center mb-8">
+            <div className="lg:hidden mb-4">
+              <img src="/Images/CompanyLogo.jpeg" alt="Borrowly" className="w-20 mx-auto" />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1E6592] to-[#001F47] bg-clip-text text-transparent">
+              Admin Login
+            </h1>
+            <p className="text-gray-500 text-sm mt-2">
+              Sign in to access the Borrowly administration dashboard
+            </p>
+          </div>
+
+          {error && (
+            <Alert variant={getErrorVariant(error.type) as any} className="mb-6">
+              {getErrorIcon(error.type)}
+              <AlertDescription>{error.message}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) clearError();
+                  }}
+                  className="pl-10"
+                  placeholder="admin@Borrowly.in"
+                  required
+                  disabled={isLoading}
+                />
+                {errors.email && <div className="text-red-500 text-xs">{errors.email}</div>}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) clearError();
+                  }}
+                  className="pl-10 pr-10"
+                  placeholder="Enter your password"
+                  required
+                  disabled={isLoading}
+                />
+                {errors.password && <div className="text-red-500 text-xs">{errors.password}</div>}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotOpen(true);
+                    setForgotStep(1);
+                    setForgotEmail("");
+                    setForgotOtp("");
+                    setForgotNewPassword("");
+                    setForgotConfirmPassword("");
+                    setForgotError("");
+                    setForgotSuccess("");
+                  }}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-[#1E6592] to-[#001F47] hover:from-[#1E6592] hover:to-[#001F47] text-white font-medium py-4 px-4 rounded-lg transition-all duration-200"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </form>       
+        </motion.div>
+      </div>
 
       {/* Forgot Password Dialog */}
       <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>

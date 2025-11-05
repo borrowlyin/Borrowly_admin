@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "@/lib/api";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, RefreshCw } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { useCareersCache } from "@/hooks/useCareersCache";
 
 interface CareerApplication {
   id: string;
@@ -33,8 +34,7 @@ interface CareerApplication {
 }
 
 const Careers: React.FC = () => {
-  const [applications, setApplications] = useState<CareerApplication[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { applications, loading, isRefreshing, lastUpdated, refetch } = useCareersCache();
   const [error, setError] = useState("");
   const [confirmModal, setConfirmModal] = useState<{ id: string | null; newStatus: string; show: boolean }>({ id: null, newStatus: "", show: false });
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -47,31 +47,7 @@ const Careers: React.FC = () => {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchApplications = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/careers`);
-        const raw = response.data?.data ?? response.data ?? [];
-        const normalized = raw.map((app: any) => ({
-          ...app,
-          id: String(app.id ?? app.generatedUserId ?? app._id ?? app.uuid),
-          firstName: app.firstName ?? app.first_name ?? app.first_name ?? "",
-          lastName: app.lastName ?? app.last_name ?? "",
-          status: (app.status ?? "pending").toLowerCase(),
-        }));
-        setApplications(normalized);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to fetch career applications");
-        toast({ title: "Error", description: "Failed to fetch career applications", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchApplications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
 
   // reset page when filters/search change
   useEffect(() => setPage(1), [searchTerm, statusFilter]);
@@ -107,7 +83,8 @@ const Careers: React.FC = () => {
         status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1),
       });
 
-      setApplications((prev) => prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app)));
+      // Refresh cache after status update
+      refetch();
       toast({ title: "Status Updated", description: `Application marked as ${newStatus}` });
     } catch (err) {
       console.error("Failed to update status", err);
@@ -177,6 +154,27 @@ const Careers: React.FC = () => {
         <h1 className="text-3xl font-bold mb-2">Career Applications</h1>
         <p className="mb-6 text-gray-500 text-[14px]">Review incoming applications and manage candidate statuses.</p>
       </div>
+
+      {/* Cache Status Indicator */}
+      {lastUpdated && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+            </div>
+            <button
+              onClick={refetch}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">

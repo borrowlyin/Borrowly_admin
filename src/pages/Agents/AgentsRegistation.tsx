@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { FileText, Loader2, ArrowLeft } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { API_BASE_URL } from "@/lib/api";
+import { useAgentsCache } from "@/hooks/useAgentsCache";
 
 interface Agent {
   id: string;
@@ -53,17 +54,12 @@ const formatKey = (key: string) =>
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
 const AgentsRegistration: React.FC = () => {
-  const [agents, setAgents] = useState<Agent[]>([]);
   const [approvalFilter, setApprovalFilter] = useState<"all" | "approved" | "pending">("pending");
-
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
+  const { agents, loading, totalItems, totalPages, isRefreshing, lastUpdated, refetch } = useAgentsCache(page, search, stateFilter, typeFilter, approvalFilter);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const { toast } = useToast();
@@ -82,69 +78,7 @@ const AgentsRegistration: React.FC = () => {
     loading: boolean;
   }>({ open: false, agentId: null, newApproval: false, loading: false });
 
-  // fetch agents list
-  // fetch agents list
-  const fetchAgents = async (p = page) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("page", String(p));
-      params.append("limit", String(limit));
-      if (search) params.append("search", search);
-      if (stateFilter !== "all") params.append("state", stateFilter);
-      if (typeFilter !== "all") params.append("professional_type", typeFilter);
 
-      // Approval filter logic
-      if (approvalFilter === "approved") {
-        params.append("approval", "true");
-      } else if (approvalFilter === "pending") {
-        params.append("approval", "false");
-      }
-      // if "all", do not append approval => fetch all
-
-      const url = `${API_BASE_URL}/api/agents/admin/agents/newlist?${params.toString()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const data = await res.json();
-
-      const items: Agent[] = Array.isArray(data.agents)
-        ? data.agents
-        : data.data ?? [];
-      const meta = data.meta ?? {};
-
-      setAgents(items.map((a) => ({ ...a, id: String(a.id) })));
-      setTotalItems(Number(meta.totalItems ?? items.length));
-      setTotalPages(Math.max(1, Number(meta.totalPages ?? 1)));
-      setPage(
-        Math.max(
-          1,
-          Math.min(
-            Number(meta.currentPage ?? p),
-            Math.max(1, Number(meta.totalPages ?? 1))
-          )
-        )
-      );
-    } catch (err) {
-      console.error("fetchAgents error:", err);
-      toast({
-        title: "Error",
-        description: "Failed to fetch agents.",
-        variant: "destructive",
-      });
-      setAgents([]);
-      setTotalItems(0);
-      setTotalPages(1);
-      setPage(1);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-
-  useEffect(() => {
-    fetchAgents(1);
-  }, [search, stateFilter, typeFilter, approvalFilter]);
 
   // fetch signed url helper
   const fetchSignedUrl = async (documentUrl: string) => {
@@ -221,22 +155,10 @@ const AgentsRegistration: React.FC = () => {
       }
 
       // If approval succeeded:
-      if (newApproval) {
-        // Remove from the registration list (approved agents shouldn't stay here)
-        setAgents((prev) => prev.filter((a) => String(a.id) !== String(agentId)));
-        // If viewing details, close it
-        if (selectedAgent?.id === agentId) {
-          clearView();
-        }
-      } else {
-        // For unapprove, update row in place
-        setAgents((prev) =>
-          prev.map((a) =>
-            String(a.id) === String(agentId) ? { ...a, approval: newApproval } : a
-          )
-        );
-        if (selectedAgent?.id === agentId)
-          setSelectedAgent((s) => (s ? { ...s, approval: newApproval } : s));
+      // Refresh cache after approval change
+      refetch();
+      if (selectedAgent?.id === agentId) {
+        clearView();
       }
 
       toast({
@@ -259,7 +181,6 @@ const AgentsRegistration: React.FC = () => {
     const clamped = Math.max(1, Math.min(totalPages, p));
     if (clamped === page) return;
     setPage(clamped);
-    fetchAgents(clamped);
   };
 
   // Smart document key detection (case-insensitive)
@@ -270,7 +191,6 @@ const AgentsRegistration: React.FC = () => {
       // we only care about string values that look like URLs (or non-empty strings)
       if (typeof val !== "string" || !val) return false;
       const lower = k.toLowerCase();
-      // check key name for common document indicators
       return /(aadhar|aadhaar|adhar|pan|profile|selfie|id_proof|doc|document|upload)/i.test(
         lower
       );
@@ -313,7 +233,8 @@ const handleDeleteConfirm = async () => {
       description: "Agent deleted successfully and regret mail sent.",
     });
 
-    setAgents((prev) => prev.filter((a) => String(a.id) !== String(deleteConfirm.agentId)));
+    // Refresh cache after deletion
+    refetch();
     if (selectedAgent?.id === deleteConfirm.agentId) clearView();
   } catch (err) {
     console.error("deleteAgent error:", err);
@@ -342,6 +263,27 @@ const handleDeleteConfirm = async () => {
           activate them.
         </p>
       </div>
+
+      {/* Cache Status Indicator */}
+      {lastUpdated && !selectedAgent && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+            </div>
+            <button
+              onClick={refetch}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search + Toggle */}
       {!selectedAgent && (

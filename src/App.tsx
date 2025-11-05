@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { DashboardCacheProvider } from "@/contexts/DashboardCacheContext";
+import { LoanCacheProvider } from "@/contexts/LoanCacheContext";
 
 import { AdminLayout } from "@/components/shared/AdminLayout";
 import { Login } from "@/pages/auth/Login";
@@ -45,7 +47,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
+        <DashboardCacheProvider>
+          <LoanCacheProvider>
+            <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -70,7 +74,9 @@ const App = () => (
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+            </BrowserRouter>
+          </LoanCacheProvider>
+        </DashboardCacheProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

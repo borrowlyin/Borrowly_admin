@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Info, Loader2, ArrowLeft, FileText } from "lucide-react";
+import { Info, Loader2, ArrowLeft, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { API_BASE_URL } from "@/lib/api";
+import { useVehicleLoanCache } from "@/hooks/useVehicleLoanCache";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -35,13 +36,10 @@ interface LoanApplication {
 
 const VehicleTable: React.FC = () => {
   const { toast } = useToast();
-  const [loans, setLoans] = useState<LoanApplication[]>([]);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const { loans, loading, total, totalPages, isRefreshing, lastUpdated, refetch } = useVehicleLoanCache(page, search, statusFilter);
   const [selectedLoan, setSelectedLoan] = useState<any | null>(null); // details payload
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
@@ -192,84 +190,7 @@ const VehicleTable: React.FC = () => {
     }
   };
 
-  // ------------- Fetch loans (paginated + search + status) -------------
-  const fetchLoans = async (p = page) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("table", table);
-      params.append("page", String(p));
-      params.append("limit", String(limit));
-      if (search) params.append("search", search);
-      if (statusFilter !== "all") params.append("status", statusFilter);
 
-      const res = await fetch(`${API_BASE_URL}/api/loans?${params.toString()}`);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("fetchLoans non-OK:", res.status, res.statusText, txt);
-        throw new Error(`Server returned ${res.status}`);
-      }
-
-      const data = await res.json().catch((e) => {
-        console.error("Failed to parse JSON:", e);
-        return null;
-      });
-
-      let items: any[] = [];
-      let totalCount = 0;
-      let serverPage = p;
-      let serverTotalPages = 1;
-
-      if (Array.isArray(data)) {
-        items = data;
-        totalCount = data.length;
-      } else if (data && Array.isArray(data.data)) {
-        items = data.data;
-        totalCount = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(totalCount / limit)));
-      } else if (data && Array.isArray(data.items)) {
-        items = data.items;
-        totalCount = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(totalCount / limit)));
-      } else {
-        console.warn("Unexpected response shape for vehicle loans:", data);
-        items = [];
-        totalCount = 0;
-      }
-
-      const mapped = items.map((loan: any) => ({
-        id: String(loan.id),
-        full_name: loan.fullname ?? loan.full_name ?? `${loan.first_name ?? ""} ${loan.last_name ?? ""}`.trim(),
-        email_address: loan.emailaddress ?? loan.email_address ?? loan.email ?? "",
-        contact_number: loan.mobile ?? loan.contact_number ?? loan.phone ?? "",
-        amount: loan.desiredloanamount ?? loan.amount ?? "N/A",
-        loan_type: loan.loan_type ?? loan.type ?? "",
-        status: loan.status ?? "pending",
-        status_reason: loan.reason ?? loan.status_reason ?? "",
-        created_at: loan.createdat ?? loan.created_at ?? loan.createdAt ?? "",
-        ...loan,
-      }));
-
-      setLoans(mapped);
-      setTotal(totalCount);
-      setTotalPages(Math.max(1, serverTotalPages));
-      setPage(Math.min(Math.max(1, serverPage), Math.max(1, serverTotalPages)));
-    } catch (error: any) {
-      console.error("fetchLoans error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch loans. Check console/network for details.",
-        variant: "destructive",
-      });
-      setLoans([]);
-      setTotal(0);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // ------------- Fetch loan details (with viewing loader) -------------
   const fetchLoanDetails = async (id: string) => {
@@ -314,9 +235,8 @@ const VehicleTable: React.FC = () => {
       if (!res.ok) throw new Error("Failed to update status");
       await res.json();
 
-      // Optimistically update list and details if open
-      setLoans((prev) => prev.map((l) => (l.id === loanId ? { ...l, status: newStatus } : l)));
       if (selectedLoan?.id === loanId) setSelectedLoan((s: any) => (s ? { ...s, status: newStatus } : s));
+      refetch(); // Refresh cached data
 
       toast({
         title: "Status Updated",
@@ -332,9 +252,7 @@ const VehicleTable: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLoans(page);
-  }, [page, search, statusFilter]);
+
 
 
   const [startDate, setStartDate] = useState<string | "">("");
@@ -589,6 +507,27 @@ const VehicleTable: React.FC = () => {
           Oversee vehicle loan applications on Borrowly Loan. Verify vehicle details and applicant <br />information, and manage approvals effortlessly.
         </p>
       </div>
+
+      {/* Cache Status Indicator */}
+      {lastUpdated && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+            </div>
+            <button
+              onClick={refetch}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls — hidden while viewing a loan */}
       {!viewingLoanId && (
@@ -1004,20 +943,19 @@ const VehicleTable: React.FC = () => {
                           ₹{Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </td>
                         <td className="p-3">
-                          <Select
-                            value={(loan.status || "pending").toLowerCase()}
-                            onValueChange={(val) => updateLoanStatus(loan.id, val)}
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              loan.status === "approved"
+                                ? "bg-green-100 text-green-800"
+                                : loan.status === "rejected"
+                                ? "bg-red-100 text-red-800"
+                                : loan.status === "cancel"
+                                ? "bg-gray-100 text-gray-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
                           >
-                            <SelectTrigger className={loan.status + " max-w-[150px]"}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="cancel">Cancel</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            {((loan.status || "pending").charAt(0).toUpperCase() + (loan.status || "pending").slice(1))}
+                          </span>
                         </td>
                         <td className="p-3">{formatDate(loan.created_at)}</td>
                         <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">

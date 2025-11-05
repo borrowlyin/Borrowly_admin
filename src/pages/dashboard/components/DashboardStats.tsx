@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -6,10 +6,11 @@ import {
   Mail,
   FileText,
   BarChart3,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "@/lib/api";
+import { useDashboardCache } from "@/contexts/DashboardCacheContext";
 
 // ---------- TYPES ----------
 interface Stat {
@@ -56,68 +57,45 @@ const statusColors: Record<string, string> = {
 
 // ---------- DASHBOARD COMPONENT ----------
 const DashboardStats: React.FC = () => {
-  const [stats, setStats] = useState<Stat[]>([]);
-  const [loanTypes, setLoanTypes] = useState<LoanType[]>([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { data, loading, error, lastUpdated, isRefreshing, refresh } = useDashboardCache();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem("admin_token");
-        const response = await fetch(`${API_BASE_URL}/api/dashboard-data`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) throw new Error("Failed to fetch dashboard data");
-        const data = await response.json();
+  const stats = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        title: "Loan Enquiries",
+        value: data.totalApplicants ?? 0,
+        change: "+5%",
+        trend: "up" as const,
+        route: "/applications",
+      },
+      {
+        title: "Contacted Candidates",
+        value: data.totalContactedCandidates ?? 0,
+        change: "+2%",
+        trend: "up" as const,
+        route: "/contactus",
+      },
+    ];
+  }, [data]);
 
-        // ---------- STATS ----------
-        const mappedStats: Stat[] = [
-          {
-            title: "Loan Enquiries",
-            value: data.totalApplicants ?? 0,
-            change: "+5%",
-            trend: "up",
-            route: "/applications",
-          },
-          {
-            title: "Contacted Candidates",
-            value: data.totalContactedCandidates ?? 0,
-            change: "+2%",
-            trend: "up",
-            route: "/contactus",
-          },
-        ];
-        setStats(mappedStats);
-
-        // ---------- LOAN TYPES ----------
-        const loansArray: LoanType[] = Object.entries(data.loans || {}).map(
-          ([loanTypeKey, loanData], index) => ({
-            rank: index + 1,
-            loan_type: loanTypeKey.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-            total_querries: loanData.totalApplicants ?? 0,
-            statusCounts: loanData.statusCounts ?? {
-              pending: 0,
-              approved: 0,
-              rejected: 0,
-              cancelled: 0,
-            },
-          })
-        );
-        setLoanTypes(loansArray);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const loanTypes = useMemo(() => {
+    if (!data?.loans) return [];
+    return Object.entries(data.loans).map(
+      ([loanTypeKey, loanData], index) => ({
+        rank: index + 1,
+        loan_type: loanTypeKey.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+        total_querries: loanData.totalApplicants ?? 0,
+        statusCounts: loanData.statusCounts ?? {
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          cancelled: 0,
+        },
+      })
+    );
+  }, [data]);
 
   const handleCardClick = (route: string | null | undefined) => {
     if (route) navigate(route);
@@ -173,8 +151,49 @@ const DashboardStats: React.FC = () => {
     );
   }
 
+  const formatLastUpdated = (date: Date | null) => {
+    if (!date) return "Never";
+    return date.toLocaleTimeString('en-US', { 
+      hour12: true, 
+      hour: 'numeric', 
+      minute: '2-digit' 
+    });
+  };
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8 bg-red-50 rounded-lg">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Failed to load dashboard data</p>
+          <p className="text-red-500 text-sm mt-1">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
+      {/* Last Updated Indicator */}
+      {lastUpdated && (
+        <div className="flex items-center justify-between">
+          <div></div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${formatLastUpdated(lastUpdated)}`}
+              </span>
+            </div>
+            <button
+              onClick={refresh}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
       {/* ---------- DASHBOARD STATS ---------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map((stat, index) => {

@@ -347,22 +347,20 @@ const LoanList: React.FC = () => {
                   <td className="px-4 py-3 border">{loan.contact_number}</td>
                   <td className="px-4 py-3 border">{loan.loan_type}</td>
                   <td className="px-4 py-3 border">
-                    <Select
-                      value={loan.status}
-                      onValueChange={(val) =>
-                        handleStatusChange(loan.id, loan.loan_type, val)
-                      }
-                    >
-                      <SelectTrigger className={`w-28 ${getStatusColor(loan.status)}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="cancel">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <span
+  className={`px-2 py-1 rounded text-xs font-medium ${
+    loan.status === "approved"
+      ? "bg-green-100 text-green-800"
+      : loan.status === "rejected"
+      ? "bg-red-100 text-red-800"
+      : loan.status === "cancel"
+      ? "bg-gray-100 text-gray-800"
+      : "bg-yellow-100 text-yellow-800"
+  }`}
+>
+  {(loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1)}
+</span>
+
                   </td>
                   {/* <td className="px-4 py-3 border">{loan.status_reason || "-"}</td> */}
                   <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>

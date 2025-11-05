@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,6 +20,7 @@ import { ChevronsUpDown, Check } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/lib/api";
+import { useInsuranceCache } from "@/hooks/useInsuranceCache";
 
 interface LoanApplication {
   id: string;
@@ -59,21 +60,19 @@ const formatKey = (key: string) =>
   fieldLabelMap[key] || key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const InsuranceTable: React.FC = () => {
-  const [loans, setLoans] = useState<LoanApplication[]>([]);
-  const [allLoans, setAllLoans] = useState<LoanApplication[]>([]);
-  const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
-   const [assignedBanks, setAssignedBanks] = useState([]);
-  const limit = 10;
+  const [assignedBanks, setAssignedBanks] = useState([]);
   const table = "insurance_loans";
   const { toast } = useToast();
+  
+  const { insurances, loading, total, totalPages, isRefreshing, lastUpdated, refetch } = useInsuranceCache(page, search, statusFilter);
+  
+  const loans = insurances;
 
   const getStatusColor = (status?: string) => {
     switch ((status || "").toLowerCase()) {
@@ -223,10 +222,6 @@ const InsuranceTable: React.FC = () => {
   };
 
   const updateLoanStatus = async (loanId: string, newStatus: string) => {
-    // optimistic update
-    setLoans((prev) => prev.map((l) => (l.id === loanId ? { ...l, status: newStatus } : l)));
-    if (selectedLoan?.id === loanId) setSelectedLoan((s) => (s ? { ...s, status: newStatus } : s));
-
     try {
       const res = await fetch(`${API_BASE_URL}/api/loans/${table}/${loanId}/status`, {
         method: "PATCH",
@@ -240,12 +235,13 @@ const InsuranceTable: React.FC = () => {
         throw new Error(msg);
       }
 
+      if (selectedLoan?.id === loanId) setSelectedLoan((s) => (s ? { ...s, status: newStatus } : s));
+      refetch(); // Refresh cached data
+
       toast({ title: "Status Updated", description: `Loan marked as ${newStatus}` });
     } catch (err: any) {
       console.error("updateLoanStatus error:", err);
       toast({ title: "Error", description: err?.message ?? "Failed to update status", variant: "destructive" });
-      // revert on failure (best-effort: refetch list)
-      fetchLoans();
     }
   };
 
@@ -492,7 +488,7 @@ const InsuranceTable: React.FC = () => {
 
   return (
     <motion.div
-      className="bg-white h-[93dvh] rounded-xl p-6 shadow-lg"
+      className="bg-white h-[93dvh] overflow-scroll rounded-xl p-6 shadow-lg"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
@@ -503,6 +499,27 @@ const InsuranceTable: React.FC = () => {
           Manage insurance-related loan submissions. Review, verify and update statuses.
         </p>
       </div>
+
+      {/* Cache Status Indicator */}
+      {lastUpdated && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+            </div>
+            <button
+              onClick={refetch}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls — hidden when viewing a loan */}
       {!viewingLoanId && (
@@ -822,20 +839,20 @@ const InsuranceTable: React.FC = () => {
                   <td className="px-4 py-3 border">{loan.mobile ?? loan.contact_number ?? "-"}</td>
                    <td className="px-4 py-3 border">{loan.amount ?? "-"}</td>
                   <td className="px-4 py-3 border">
-                    <Select
-                      value={(loan.status ?? "pending").toLowerCase()}
-                      onValueChange={(v) => updateLoanStatus(String(loan.id), v)}
-                    >
-                      <SelectTrigger className={loan.status+ " w-32"}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="cancel">Cancel</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <span
+  className={`px-2 py-1 rounded text-xs font-medium ${
+    loan.status === "approved"
+      ? "bg-green-100 text-green-800"
+      : loan.status === "rejected"
+      ? "bg-red-100 text-red-800"
+      : loan.status === "cancel"
+      ? "bg-gray-100 text-gray-800"
+      : "bg-yellow-100 text-yellow-800"
+  }`}
+>
+  {(loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1)}
+</span>
+
                   </td>
                  
                   <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>

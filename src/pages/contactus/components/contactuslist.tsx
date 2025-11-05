@@ -9,9 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useContactUsCache } from "@/hooks/useContactUsCache";
 
 interface ContactInquiry {
   id: number;
@@ -27,106 +28,13 @@ interface ContactInquiry {
 }
 
 const Contactuslist: React.FC = () => {
-  const [contacts, setContacts] = useState<ContactInquiry[]>([]);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const limit = 10;
+  const { contacts, loading, total, totalPages, isRefreshing, lastUpdated, refetch } = useContactUsCache(page, search, statusFilter);
   const { toast } = useToast();
 
-  const fetchContacts = async (p = page) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("page", String(p));
-      params.append("limit", String(limit));
-      if (search) params.append("search", search);
-      if (statusFilter !== "all") params.append("status", statusFilter);
 
-      const res = await fetch(`${API_BASE_URL}/api/contact-us?${params.toString()}`);
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("fetchContacts non-OK:", res.status, res.statusText, txt);
-        throw new Error(`Server returned ${res.status}`);
-      }
-
-      const data = await res.json().catch((e) => {
-        console.error("Failed to parse JSON:", e);
-        return null;
-      });
-
-      // Accept multiple shapes: raw array, { data: [...] }, { items: [...] }, { result: [...] }
-      let items: any[] = [];
-      let totalCount = 0;
-      let serverPage = p;
-      let serverTotalPages = 1;
-
-      if (Array.isArray(data)) {
-        items = data;
-        totalCount = data.length;
-      } else if (data && Array.isArray(data.data)) {
-        items = data.data;
-        totalCount = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(totalCount / limit)));
-      } else if (data && Array.isArray(data.items)) {
-        items = data.items;
-        totalCount = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(totalCount / limit)));
-      } else if (data && Array.isArray(data.result)) {
-        items = data.result;
-        totalCount = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(totalCount / limit)));
-      } else {
-        console.warn("Unexpected response shape for contact-us:", data);
-        items = [];
-        totalCount = 0;
-      }
-
-      // Normalise minimal fields we use
-      const mapped: ContactInquiry[] = items.map((c: any) => ({
-        id: Number(c.id),
-        name: c.name ?? c.fullname ?? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(),
-        email_address: c.email_address ?? c.email ?? c.emailAddress ?? "",
-        phone_number: c.phone_number ?? c.mobile ?? c.contact_number ?? "",
-        subject: c.subject ?? c.topic ?? "",
-        has_active_loan: Boolean(c.has_active_loan ?? c.hasLoan ?? c.taken_loan),
-        message: c.message ?? c.body ?? "",
-        status: c.status ?? "pending",
-        created_at: c.created_at ?? c.createdAt ?? "",
-        ...c,
-      }));
-
-      setContacts(mapped);
-      setTotal(totalCount);
-      setTotalPages(Math.max(1, serverTotalPages));
-      setPage(Math.min(Math.max(1, serverPage), Math.max(1, serverTotalPages)));
-    } catch (error) {
-      console.error("fetchContacts error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch contact messages. Check console/network for details.",
-        variant: "destructive",
-      });
-      setContacts([]);
-      setTotal(0);
-      setTotalPages(1);
-      setPage(1);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchContacts(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, statusFilter]);
 
   const updateStatus = async (id: number, status: string) => {
     try {
@@ -143,9 +51,10 @@ const Contactuslist: React.FC = () => {
       }
 
       const updated = await res.json().catch(() => null);
-      // If API returns the updated object or status, use it; otherwise update optimistic
       const newStatus = updated?.status ?? status;
-      setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
+      
+      // Refresh cache after status update
+      refetch();
 
       toast({
         title: "Updated",
@@ -193,6 +102,27 @@ const Contactuslist: React.FC = () => {
           Review incoming contact inquiries. Reply to users and update status to keep track of responses.
         </p>
       </div>
+
+      {/* Cache Status Indicator */}
+      {lastUpdated && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+            </div>
+            <button
+              onClick={refetch}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">

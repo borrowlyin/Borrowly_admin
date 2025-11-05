@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { ChevronsUpDown, Check } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useBusinessLoanCache } from "@/hooks/useBusinessLoanCache";
 interface LoanApplication {
   id: string;
   full_name?: string;
@@ -59,108 +60,32 @@ const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
 
 const BusinessTable: React.FC = () => {
-  const [loans, setLoans] = useState<LoanApplication[]>([]);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
 
-  const limit = 10;
   const table = "business_loans";
   const { toast } = useToast();
   const [assignedBanks, setAssignedBanks] = useState([]);
-  const fetchLoans = async (p = page) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("table", table);
-      params.append("page", String(p));
-      params.append("limit", String(limit));
-      if (search) params.append("search", search);
-      if (statusFilter !== "all") params.append("status", statusFilter);
-
-      const res = await fetch(`${API_BASE_URL}/api/loans?${params.toString()}`);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("fetchLoans non-OK:", res.status, res.statusText, txt);
-        throw new Error(`Server returned ${res.status}`);
-      }
-
-      const data = await res.json().catch((e) => {
-        console.error("Failed to parse JSON:", e);
-        return null;
-      });
-
-      let items: any[] = [];
-      let serverPage = p;
-      let serverTotalPages = 1;
-      let serverTotal = 0;
-
-      if (Array.isArray(data)) {
-        items = data;
-        serverTotal = items.length;
-      } else if (data && Array.isArray(data.data)) {
-        items = data.data;
-        serverTotal = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(serverTotal / limit)));
-      } else if (data && Array.isArray(data.items)) {
-        items = data.items;
-        serverTotal = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(serverTotal / limit)));
-      } else if (data && Array.isArray(data.result)) {
-        items = data.result;
-        serverTotal = Number(data.total ?? items.length) || 0;
-        serverPage = Number(data.page ?? p) || p;
-        serverTotalPages = Number(data.totalPages ?? Math.max(1, Math.ceil(serverTotal / limit)));
-      } else {
-        console.warn("Unexpected response shape for business loans:", data);
-        items = [];
-        serverTotal = 0;
-      }
-
-      const mapped = items.map((loan: any) => ({
-        id: String(loan.id),
-        full_name: loan.fullname ?? loan.full_name ?? `${loan.first_name ?? ""} ${loan.last_name ?? ""}`.trim(),
-        email_address: loan.email ?? loan.email_address ?? loan.email_address,
-        contact_number: loan.mobile ?? loan.contact_number ?? loan.phone,
-        amount: loan.desiredloanamount ?? loan.amount ?? loan.desired_loan_amount ?? "N/A",
-        loan_type: loan.loan_type ?? loan.type,
-        status: (loan.status ?? loan.application_status ?? "pending").toString(),
-        status_reason: loan.reason ?? loan.status_reason ?? loan.statusReason ?? "",
-        created_at: loan.created_at ?? loan.createdAt ?? loan.date ?? "",
-        ...loan,
-      }));
-
-      setLoans(mapped);
-      setTotal(serverTotal || mapped.length);
-      setTotalPages(Math.max(1, serverTotalPages));
-      setPage(Math.min(Math.max(1, serverPage), Math.max(1, serverTotalPages)));
-    } catch (error) {
-      console.error("fetchLoans error:", error);
+  
+  const { data, loading, error, refresh, isRefreshing } = useBusinessLoanCache(page, search, statusFilter);
+  const lastUpdated = data?.timestamp;
+  
+  const loans = data?.loans || [];
+  const total = data?.total || 0;
+  const totalPages = data?.totalPages || 1;
+  useEffect(() => {
+    if (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch loans. Check console/network for details.",
+        description: error,
         variant: "destructive",
       });
-      setLoans([]);
-      setTotal(0);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchLoans(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, statusFilter]);
+  }, [error, toast]);
 
   const fetchLoanDetails = async (id: string) => {
     setViewingLoanId(id);
@@ -466,6 +391,27 @@ const BusinessTable: React.FC = () => {
           Oversee business loan requests. Verify company details and manage approvals with ease.
         </p>
       </div>
+
+      {/* Cache Status Indicator */}
+      {data && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-sm text-gray-500">
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+              <span className={isRefreshing ? 'text-blue-500' : ''}>
+                {isRefreshing ? 'Refreshing...' : `Last updated: ${data.timestamp.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+            </div>
+            <button
+              onClick={refresh}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls — hidden while viewing a loan or loading details */}
       {!viewingLoanId && (
@@ -774,20 +720,19 @@ const BusinessTable: React.FC = () => {
                   <td className="px-4 py-3 border">{loan.contact_number ?? loan.mobile ?? loan.phone ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.amount ?? loan.desiredloanamount ?? "-"}</td>
                   <td className="px-4 py-3 border">
-                    <Select
-                      value={(loan.status ?? "pending").toLowerCase()}
-                      onValueChange={(v) => updateLoanStatus(String(loan.id), v)}
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        loan.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : loan.status === "rejected"
+                          ? "bg-red-100 text-red-800"
+                          : loan.status === "cancel"
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
                     >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="cancel">Cancel</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      {((loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1))}
+                    </span>
                   </td>
 
                   <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>
