@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Upload, Building2, User } from "lucide-react";
 
+import { API_BASE_URL } from "@/lib/api";
+
 const CreationForm = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -50,7 +52,7 @@ const CreationForm = () => {
 
     try {
       // Step 1: Get signed URLs
-      const signedUrlRes = await fetch("http://localhost:4528/api/GetBankSignedUrls");
+      const signedUrlRes = await fetch(`${API_BASE_URL}/api/GetBankSignedUrls`);
       const signedUrlData = await signedUrlRes.json();
       if (!signedUrlRes.ok) {
         alert("Failed to generate upload URLs");
@@ -83,7 +85,7 @@ const CreationForm = () => {
       }
 
       // Step 3: Create bank account
-      const response = await fetch("http://localhost:4528/api/CreateBank", {
+      const response = await fetch(`${API_BASE_URL}/api/CreateBank`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
