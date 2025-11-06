@@ -40,14 +40,16 @@ const Analysis = () => {
     fetchData(selectedPeriod);
   }, [selectedPeriod]);
 
+  const convertPaisaToRupee = (paisa: number) => paisa / 100;
+
   const getLoanAmount = (loanType: string) => {
     const loan = data?.breakdown.find(item => item.loan_type === loanType);
-    return loan ? parseInt(loan.total_amount) : 0;
+    return loan ? convertPaisaToRupee(parseInt(loan.total_amount)) : 0;
   };
 
   const chartData = data?.breakdown.map(item => ({
     loan_type: item.loan_type.replace('Loan', ''),
-    amount: parseInt(item.total_amount),
+    amount: convertPaisaToRupee(parseInt(item.total_amount)),
     applications: parseInt(item.total_applications)
   })) || [];
 
@@ -78,7 +80,7 @@ const Analysis = () => {
             <DollarSign className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-700">₹{data?.summary.total_amount.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-blue-700">₹{convertPaisaToRupee(data?.summary.total_amount || 0).toLocaleString()}</div>
             <p className="text-xs text-green-600">+12% from last month</p>
           </CardContent>
         </Card>
