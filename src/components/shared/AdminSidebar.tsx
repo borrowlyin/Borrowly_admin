@@ -31,7 +31,7 @@ interface AdminSidebarProps {
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
-
+  const userRole = sessionStorage.getItem("newrole") || "";
   const [openDropdown, setOpenDropdown] = useState(false);
 
   const handleDropdownToggle = () => {
@@ -96,6 +96,25 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-5 space-y-2 overflow-y-auto">
+        {userRole === "super_admin" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <NavLink
+                to="/Analysis"
+                className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+          transition-all duration-200
+          ${location.pathname === "/Analysis"
+                    ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                  }`}
+              >
+                <Coins className="w-5 h-5" />
+                {!collapsed && <span>Analysis</span>}
+              </NavLink>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent>Analysis</TooltipContent>}
+          </Tooltip>
+        )}
         {/* Dashboard */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -230,24 +249,26 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
           {collapsed && <TooltipContent>Agent</TooltipContent>}
         </Tooltip>
 
-        {/* ✅ New Route for Account Creation */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <NavLink
-              to="/Accountcreation"
-              className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
-        transition-all duration-200
-        ${location.pathname === "/Accountcreation"
-                  ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
-                }`}
-            >
-              <UserPlus className="w-5 h-5" />
-              {!collapsed && <span>Account Creation</span>}
-            </NavLink>
-          </TooltipTrigger>
-          {collapsed && <TooltipContent>Account Creation</TooltipContent>}
-        </Tooltip>
+        {userRole === "super_admin" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <NavLink
+                to="/Accountcreation"
+                className={`relative flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium
+          transition-all duration-200
+          ${location.pathname === "/Accountcreation"
+                    ? "bg-gradient-to-br from-blue-600 to-[#0f77d2] text-white shadow-md"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                  }`}
+              >
+                <UserPlus className="w-5 h-5" />
+                {!collapsed && <span>Account Creation</span>}
+              </NavLink>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent>Account Creation</TooltipContent>}
+          </Tooltip>
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <NavLink

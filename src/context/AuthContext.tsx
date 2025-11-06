@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       const data = await res.json();
-
+      console.log(data)
       if (!res.ok) {
         const error = handleApiError(res, data);
         setError(error);
@@ -166,17 +166,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw error;
       }
 
-      // Optionally decode token for user info, or fetch user info from backend
+    
       const user = {
         id: data.user?.id || "",
         email,
         name: data.user?.name || "",
         role: "admin",
+        newrole :data.admin.role || ""
       };
       setUser(user);
       setToken(token);
       localStorage.setItem("admin_token", token);
       localStorage.setItem("admin_user", JSON.stringify(user));
+      sessionStorage.setItem("newrole",user.newrole)
     } catch (error) {
       if (error instanceof TypeError && error.message.includes("fetch")) {
         const networkError = {

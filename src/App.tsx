@@ -26,6 +26,7 @@ import Careers from "./pages/careers/careers";
 import AgentsRegistation from "./pages/Agents/AgentsRegistation";
 import AccountCreation from "./pages/Accountcreation/Account";
 import BankAggregators from "./pages/BankAggregators/bankaggregators";
+import Analysis from "./pages/Analysis/Analysis";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="EducationTable" element={<EducationTable />} />
               <Route path="InsuranceTable" element={<InsuranceTable />} />
               <Route path="HomeTable" element={<HomeTable />} />
+              <Route path="Analysis" element={<Analysis />} />
 
             </Route>
             <Route path="*" element={<NotFound />} />
