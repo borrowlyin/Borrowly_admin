@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Info, Loader2, ArrowLeft, FileText, RefreshCw } from "lucide-react";
+import { Info, Loader2, ArrowLeft, FileText, RefreshCw, Download, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -44,6 +44,10 @@ const EducationTable: React.FC = () => {
   // Use cached data
   const { loans, loading, total, totalPages, isRefreshing, lastUpdated, refetch } = useEducationLoanCache(page, search, statusFilter);
  const [assignedBanks, setAssignedBanks] = useState([]);
+  const [assignedBanksLoading, setAssignedBanksLoading] = useState(false);
+  const [documentModal, setDocumentModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [docLoadError, setDocLoadError] = useState(false);
   // details state follows VehicleTable naming
   const [selectedLoan, setSelectedLoan] = useState<any | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -388,6 +392,7 @@ const EducationTable: React.FC = () => {
   }, []);
   const [selectedBanks, setSelectedBanks] = useState([]);
   const [open, setOpen] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
 
   const toggleBank = (bank_id) => {
     setSelectedBanks((prev) =>
@@ -415,6 +420,7 @@ const EducationTable: React.FC = () => {
       return;
     }
 
+    setAssignLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/loans/${table}/${selectedLoan.id}/assign`, {
         method: "POST",
@@ -438,6 +444,10 @@ const EducationTable: React.FC = () => {
       });
 
       setSelectedBanks([]); // reset after success
+      // Refresh assigned banks list
+      if (selectedLoan?.id && table) {
+        fetchLoanStatuses(selectedLoan.id, table);
+      }
     } catch (err) {
       console.error("Error assigning loan to bank:", err);
       toast({
@@ -445,9 +455,12 @@ const EducationTable: React.FC = () => {
         description: "Failed to assign bank(s). Check console for details.",
         variant: "destructive",
       });
+    } finally {
+      setAssignLoading(false);
     }
   };
   const fetchLoanStatuses = async (loanId, loanType) => {
+    setAssignedBanksLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/loans/${loanType}/${loanId}/statuses`);
       const data = await res.json();
@@ -462,6 +475,8 @@ const EducationTable: React.FC = () => {
     } catch (err) {
       console.error("Error fetching loan statuses:", err);
       setAssignedBanks([]);
+    } finally {
+      setAssignedBanksLoading(false);
     }
   };
   useEffect(() => {
@@ -684,103 +699,148 @@ const EducationTable: React.FC = () => {
                   </div>
                 </div>
               </div>
-  <div className="mt-6 border-t pt-4">
-            <h4 className="text-md font-semibold mb-2">Assign to Bank</h4>
+              <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <h4 className="text-lg font-semibold text-blue-800">Bank Assignment</h4>
+                </div>
 
-            {banksLoading ? (
-              <p className="text-gray-500 text-sm">Loading banks...</p>
-            ) : banks.length === 0 ? (
-              <p className="text-gray-500 text-sm">No banks available</p>
-            ) : (
-              <div className="flex gap-3 items-center">
-                <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={open}
-                      className="w-64 justify-between"
-                    >
-                      {selectedBanks.length > 0
-                        ? `${selectedBanks.length} bank(s) selected`
-                        : "Select banks"}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
+                {banksLoading ? (
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading banks...</span>
+                  </div>
+                ) : banks.length === 0 ? (
+                  <p className="text-gray-600 text-sm bg-white p-3 rounded border">No banks available</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-3 items-center">
+                      <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-64 justify-between bg-white border-blue-300 hover:bg-blue-50"
+                          >
+                            {selectedBanks.length > 0
+                              ? `${selectedBanks.length} bank(s) selected`
+                              : "Select banks"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
 
-                  <PopoverContent className="w-64 p-2 max-h-60 overflow-y-auto">
-                    {(() => {
-                      // ✅ Filter out already assigned banks
-                      const availableBanks = banks.filter(
-                        (bank) =>
-                          !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
-                      );
+                        <PopoverContent className="w-64 p-2 max-h-60 overflow-y-auto">
+                          {(() => {
+                            const availableBanks = banks.filter(
+                              (bank) =>
+                                !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
+                            );
 
-                      return availableBanks.length > 0 ? (
-                        availableBanks.map((bank) => {
-                          const bankId = bank.bank_id;
-                          const bankName = bank.bankname || bank.bank_name || bank.name;
+                            return availableBanks.length > 0 ? (
+                              availableBanks.map((bank) => {
+                                const bankId = bank.bank_id;
+                                const bankName = bank.bankname || bank.bank_name || bank.name;
 
-                          return (
-                            <div
-                              key={bankId}
-                              className={cn(
-                                "flex items-center gap-2 p-1 rounded-md hover:bg-gray-100 cursor-pointer"
-                              )}
-                              onClick={() => toggleBank(bankId)}
-                            >
-                              <Checkbox checked={selectedBanks.includes(bankId)} />
-                              <span className="text-sm">
-                                {bankName} ({bank.ifsccode})
-                              </span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p className="text-sm text-gray-500 px-2 py-1">
-                          All banks already assigned
-                        </p>
-                      );
-                    })()}
-                  </PopoverContent>
-                </Popover>
+                                return (
+                                  <div
+                                    key={bankId}
+                                    className={cn(
+                                      "flex items-center gap-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors"
+                                    )}
+                                    onClick={() => toggleBank(bankId)}
+                                  >
+                                    <Checkbox checked={selectedBanks.includes(bankId)} />
+                                    <span className="text-sm font-medium">
+                                      {bankName}
+                                    </span>
+                                    <span className="text-xs text-gray-500">({bank.ifsccode})</span>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p className="text-sm text-gray-500 px-2 py-1">
+                                All banks already assigned
+                              </p>
+                            );
+                          })()}
+                        </PopoverContent>
+                      </Popover>
 
-                <Button onClick={handleAssign} disabled={selectedBanks.length === 0}>
-                  Assign
-                </Button>
+                      <Button 
+                        onClick={handleAssign} 
+                        disabled={selectedBanks.length === 0 || assignLoading}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {assignLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Assigning...
+                          </>
+                        ) : (
+                          "Assign Banks"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
+              
+              {assignedBanksLoading ? (
+                <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                    <h5 className="text-lg font-semibold text-green-800">Assigned Banks</h5>
+                  </div>
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading assigned banks...</span>
+                  </div>
+                </div>
+              ) : assignedBanks.length > 0 && (
+                <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                    <h5 className="text-lg font-semibold text-green-800">Assigned Banks ({assignedBanks.length})</h5>
+                  </div>
+                  <div className="grid gap-3">
+                    {assignedBanks.map((item) => (
+                      <div
+                        key={item.assignment_id}
+                        className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 shadow-sm"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <span className="text-green-600 font-bold text-sm">
+                              {(item.bank_name || 'B').charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {item.bank_name || "Unknown Bank"}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              IFSC: {item.ifsccode || "N/A"}
+                            </p>
+                          </div>
+                        </div>
 
-            )}
-          </div>
-          {assignedBanks.length > 0 && (
-            <div className="mt-4 border-t pt-3">
-              <h5 className="text-sm font-semibold mb-2">Assigned Banks</h5>
-              <ul className="space-y-2">
-                {assignedBanks.map((item) => (
-                  <li
-                    key={item.assignment_id}
-                    className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded"
-                  >
-                    <span>
-                      {item.bank_name ? `${item.bank_name} (${item.ifsccode})` : "N/A"} → {item.bank_id}
-                    </span>
-
-
-                    <span
-                      className={`px-2 py-1 text-xs rounded ${item.bank_status === "pending"
-                        ? "bg-yellow-200 text-yellow-800"
-                        : item.bank_status === "approved"
-                          ? "bg-green-200 text-green-800"
-                          : "bg-gray-200 text-gray-800"
-                        }`}
-                    >
-                      {item.bank_status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                        <span
+                          className={`px-3 py-1 text-xs font-medium rounded-full ${
+                            item.bank_status === "pending"
+                              ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                              : item.bank_status === "approved"
+                              ? "bg-green-100 text-green-800 border border-green-200"
+                              : "bg-gray-100 text-gray-800 border border-gray-200"
+                          }`}
+                        >
+                          {item.bank_status?.toUpperCase() || "UNKNOWN"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Two-column layout */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Personal Details */}
@@ -858,7 +918,11 @@ const EducationTable: React.FC = () => {
                           <button
                             onClick={async () => {
                               const signed = await fetchSignedUrl(value);
-                              if (signed) window.open(signed, "_blank");
+                              if (signed) {
+                                setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
+                                setZoomLevel(100);
+                                setDocLoadError(false);
+                              }
                             }}
                             className="text-blue-600 text-sm font-semibold hover:underline"
                           >
@@ -941,6 +1005,81 @@ const EducationTable: React.FC = () => {
               </table>
             </div>
           )}
+
+      {/* Document Viewer Modal */}
+      {documentModal.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg max-w-4xl w-full relative">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">{documentModal.title}</h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = documentModal.url;
+                    link.download = `${documentModal.title}-${Date.now()}.pdf`;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast({ title: "Success", description: "Document download started" });
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </Button>
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                <Button
+                  onClick={() => setZoomLevel(prev => Math.max(prev - 25, 50))}
+                  disabled={zoomLevel <= 50}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-gray-600 min-w-[60px] text-center">{zoomLevel}%</span>
+                <Button
+                  onClick={() => setZoomLevel(prev => Math.min(prev + 25, 200))}
+                  disabled={zoomLevel >= 200}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <button
+                  onClick={() => setDocumentModal({ isOpen: false, url: '', title: '' })}
+                  className="ml-4 text-gray-500 hover:text-gray-800 text-2xl font-semibold"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-[70vh] border rounded-xl bg-gray-100 flex items-center justify-center">
+              <iframe
+                src={documentModal.url}
+                className="w-full h-full border-0 rounded"
+                style={{ 
+                  width: `${zoomLevel}%`,
+                  height: 'auto',
+                  minHeight: '500px'
+                }}
+                title={documentModal.title}
+                onError={() => setDocLoadError(true)}
+              />
+            </div>
+            {docLoadError && (
+              <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-md">
+                Failed to load the document. It may be restricted or unavailable.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Pagination — hidden while viewing a loan */}
       {!viewingLoanId && (

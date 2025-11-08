@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { ChevronsUpDown, Check, RefreshCw, FileText } from "lucide-react";
+import { ChevronsUpDown, Check, RefreshCw, FileText, Download, ZoomIn, ZoomOut } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
@@ -54,6 +54,10 @@ const PersonalTable: React.FC = () => {
   const [modalStartDate, setModalStartDate] = useState<string>("");
   const [modalEndDate, setModalEndDate] = useState<string>("");
   const [assignedBanks, setAssignedBanks] = useState([]);
+  const [assignedBanksLoading, setAssignedBanksLoading] = useState(false);
+  const [documentModal, setDocumentModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [docLoadError, setDocLoadError] = useState(false);
 
 
   const fetchLoanDetails = async (id: string) => {
@@ -380,6 +384,7 @@ const PersonalTable: React.FC = () => {
     }
   };
   const fetchLoanStatuses = async (loanId, loanType) => {
+    setAssignedBanksLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/loans/${loanType}/${loanId}/statuses`);
       const data = await res.json();
@@ -394,6 +399,8 @@ const PersonalTable: React.FC = () => {
     } catch (err) {
       console.error("Error fetching loan statuses:", err);
       setAssignedBanks([]);
+    } finally {
+      setAssignedBanksLoading(false);
     }
   };
   useEffect(() => {
@@ -703,7 +710,18 @@ const PersonalTable: React.FC = () => {
             )}
           </div>
           
-          {assignedBanks.length > 0 && (
+          {assignedBanksLoading ? (
+            <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                <h5 className="text-lg font-semibold text-green-800">Assigned Banks</h5>
+              </div>
+              <div className="flex items-center gap-2 text-green-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Loading assigned banks...</span>
+              </div>
+            </div>
+          ) : assignedBanks.length > 0 && (
             <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full"></div>
@@ -795,7 +813,11 @@ const PersonalTable: React.FC = () => {
                           <button
                             onClick={async () => {
                               const signed = await fetchSignedUrl(value);
-                              if (signed) window.open(signed, "_blank");
+                              if (signed) {
+                                setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
+                                setZoomLevel(100);
+                                setDocLoadError(false);
+                              }
                             }}
                             className="text-blue-600 text-sm font-semibold hover:underline"
                           >
@@ -862,6 +884,81 @@ const PersonalTable: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {documentModal.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg max-w-4xl w-full relative">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">{documentModal.title}</h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = documentModal.url;
+                    link.download = `${documentModal.title}-${Date.now()}.pdf`;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast({ title: "Success", description: "Document download started" });
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </Button>
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                <Button
+                  onClick={() => setZoomLevel(prev => Math.max(prev - 25, 50))}
+                  disabled={zoomLevel <= 50}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-gray-600 min-w-[60px] text-center">{zoomLevel}%</span>
+                <Button
+                  onClick={() => setZoomLevel(prev => Math.min(prev + 25, 200))}
+                  disabled={zoomLevel >= 200}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <button
+                  onClick={() => setDocumentModal({ isOpen: false, url: '', title: '' })}
+                  className="ml-4 text-gray-500 hover:text-gray-800 text-2xl font-semibold"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-[70vh] border rounded-xl bg-gray-100 flex items-center justify-center">
+              <iframe
+                src={documentModal.url}
+                className="w-full h-full border-0 rounded"
+                style={{ 
+                  width: `${zoomLevel}%`,
+                  height: 'auto',
+                  minHeight: '500px'
+                }}
+                title={documentModal.title}
+                onError={() => setDocLoadError(true)}
+              />
+            </div>
+            {docLoadError && (
+              <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-md">
+                Failed to load the document. It may be restricted or unavailable.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
