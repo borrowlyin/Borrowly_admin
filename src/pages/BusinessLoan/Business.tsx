@@ -207,74 +207,69 @@ const BusinessTable: React.FC = () => {
     return [header, ...rows].join("\n");
   };
 
-  const handleDownload = async (from?: string, to?: string) => {
-    setDownloadLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
-      if (from) params.append("startDate", from);
-      if (to) params.append("endDate", to);
+ const handleDownload = async (from?: string, to?: string) => {
+  setDownloadLoading(true);
+  try {
+    const params = new URLSearchParams();
+    if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
+    if (from) params.append("startDate", from);
+    if (to) params.append("endDate", to);
 
-      const url = `${API_BASE_URL}/api/businessloan/businessLoanlist/download?${params.toString()}`;
+    const url = `${API_BASE_URL}/api/businessloan/businessLoanlist/download?${params.toString()}`;
 
-      const res = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-        },
-      });
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("download non-OK:", res.status, txt);
-        throw new Error(`Download failed: ${res.status}`);
-      }
-
-      const payload = await res.json().catch((e) => {
-        console.error("Failed to parse download JSON:", e);
-        return null;
-      });
-
-      // Expect server to return { message, count, loans } as in your controller
-      const loansData = payload?.loans ?? payload?.data ?? payload;
-      if (!Array.isArray(loansData) || loansData.length === 0) {
-        toast({
-          title: "No records",
-          description: "No loan records found for the selected filters.",
-          variant: "warning",
-        });
-        setDownloadLoading(false);
-        return;
-      }
-
-      const csv = jsonToCsv(loansData);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = `Business-loans-${from || "all"}-to-${to || "all"}-${timestamp}.csv`;
-
-      // create link and click
-      const link = document.createElement("a");
-      const urlBlob = URL.createObjectURL(blob);
-      link.href = urlBlob;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(urlBlob);
-
-      toast({
-        title: "Downloaded",
-        description: `Exported ${loansData.length} records.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to download list. Check console/network.",
-        variant: "destructive",
-      });
-    } finally {
-      setDownloadLoading(false);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error("download non-OK:", res.status, txt);
+      throw new Error(`Download failed: ${res.status}`);
     }
-  };
+
+    const payload = await res.json().catch(() => null);
+    let loansData = payload?.loans ?? payload?.data ?? payload;
+
+    if (!Array.isArray(loansData) || loansData.length === 0) {
+      toast({ title: "No records", description: "No loan records found.", variant: "warning" });
+      setDownloadLoading(false);
+      return;
+    }
+
+    // Convert document URLs to signed URLs
+    const documentsKeys = ["pan_url", "aadhaar_url"]; // Add more fields if needed
+    for (const loan of loansData) {
+      await Promise.all(
+        documentsKeys.map(async (key) => {
+          if (loan[key]) {
+            const signed = await fetchSignedUrl(loan[key], toast);
+            loan[key] = signed ?? loan[key]; // fallback to original if signed fails
+          }
+        })
+      );
+    }
+
+    // Convert JSON to CSV
+    const csv = jsonToCsv(loansData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `Business-loans-${from || "all"}-to-${to || "all"}-${timestamp}.csv`;
+
+    // Download CSV
+    const link = document.createElement("a");
+    const urlBlob = URL.createObjectURL(blob);
+    link.href = urlBlob;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(urlBlob);
+
+    toast({ title: "Downloaded", description: `Exported ${loansData.length} records.` });
+  } catch (err) {
+    toast({ title: "Error", description: "Failed to download list. Check console/network.", variant: "destructive" });
+  } finally {
+    setDownloadLoading(false);
+  }
+};
 
   const openDownloadModal = () => {
     setModalStartDate(startDate || "");

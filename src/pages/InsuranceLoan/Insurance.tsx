@@ -976,9 +976,9 @@ const InsuranceTable: React.FC = () => {
                   <td className="px-4 py-3 border">{loan.mobile ?? loan.contact_number ?? "-"}</td>
                    <td className="px-4 py-3 border">
 
-                     {Number(loan.desiredloanamount)
-                            ? `₹${Number(loan.desiredloanamount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-                            : String(loan.desiredloanamount ?? "-")}
+                     {Number(loan.amount)
+                            ? `₹${Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            : String(loan.amount ?? "-")}
                    </td>
                   <td className="px-4 py-3 border">
                     <span

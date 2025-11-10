@@ -178,7 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(token);
       localStorage.setItem("admin_token", token);
       localStorage.setItem("admin_user", JSON.stringify(user));
-      sessionStorage.setItem("newrole",user.newrole)
+      localStorage.setItem("newrole",user.newrole)
     } catch (error) {
       if (error instanceof TypeError && error.message.includes("fetch")) {
         const networkError = {

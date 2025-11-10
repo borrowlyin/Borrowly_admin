@@ -967,15 +967,15 @@ const EducationTable: React.FC = () => {
                         if (!search) return true;
                         const s = search.toLowerCase();
                         return (
-                          (loan.full_name?.toLowerCase().includes(s) ?? false) ||
-                          (loan.contact_number?.toLowerCase().includes(s) ?? false) ||
+                          (loan.fullname?.toLowerCase().includes(s) ?? false) ||
+                          (loan.mobile?.toLowerCase().includes(s) ?? false) ||
                           (loan.email_address?.toLowerCase().includes(s) ?? false)
                         );
                       })
                       .map((loan) => (
                         <tr key={loan.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-3">{loan.full_name || "-"}</td>
-                          <td className="p-3">{loan.contact_number || "-"}</td>
+                          <td className="p-3">{loan.fullname || "-"}</td>
+                          <td className="p-3">{loan.mobile || "-"}</td>
                           <td className="p-3">
                             {loan.amount === "N/A" ? "N/A" : `₹${Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
                           </td>
@@ -994,7 +994,7 @@ const EducationTable: React.FC = () => {
                               {((loan.status || "pending").charAt(0).toUpperCase() + (loan.status || "pending").slice(1))}
                             </span>
                           </td>
-                          <td className="p-3">{formatDate(loan.created_at)}</td>
+                          <td className="p-3">{formatDate(loan.createdAt)}</td>
                           <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
                             <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
                           </td>

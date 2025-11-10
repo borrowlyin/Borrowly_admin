@@ -885,7 +885,7 @@ const HomeTable: React.FC = () => {
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.fullname ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.mobile ?? "-"}</td>
-                  <td className="px-4 py-3 border">{loan.desiredloanamount ?? "-"}</td>
+                  <td className="px-4 py-3 border">{loan.amount ?? "-"}</td>
                   <td className="px-4 py-3 border">
                    <span
   className={`px-2 py-1 rounded text-xs font-medium ${

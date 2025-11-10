@@ -31,7 +31,7 @@ interface AdminSidebarProps {
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
-  const userRole = sessionStorage.getItem("newrole") || "";
+  const userRole = localStorage.getItem("newrole") || "";
   const [openDropdown, setOpenDropdown] = useState(false);
 
   const handleDropdownToggle = () => {

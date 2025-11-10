@@ -855,7 +855,7 @@ const PersonalTable: React.FC = () => {
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.fullname ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.mobile ?? "-"}</td>
-                  <td className="px-4 py-3 border">{loan.desiredloanamount ?? "-"}</td>
+                  <td className="px-4 py-3 border">{loan.amount ?? "-"}</td>
                   <td className="px-4 py-3 border">
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
@@ -871,7 +871,7 @@ const PersonalTable: React.FC = () => {
                       {(loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>
+                  <td className="px-4 py-3 border">{formatDate(loan.createdAt)}</td>
                   <td className="px-4 py-3 border">
                     <button
                       className="text-blue-600 hover:text-blue-800 font-medium"

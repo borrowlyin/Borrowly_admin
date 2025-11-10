@@ -935,12 +935,12 @@ const GoldTable: React.FC = () => {
                   ) : (
                     loans.map((loan) => (
                       <tr key={loan.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-3">{loan.full_name || "-"}</td>
+                        <td className="p-3">{loan.fullname || "-"}</td>
                         <td className="p-3">{loan.mobile || "-"}</td>
                         <td className="p-3">
-                          {Number(loan.loan_amount)
-                            ? `₹${Number(loan.loan_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-                            : String(loan.loan_amount ?? "-")}
+                          {Number(loan.amount)
+                            ? `₹${Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            : String(loan.amount ?? "-")}
                         </td>
                         <td className="p-3">
                          <span
