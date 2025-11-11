@@ -784,8 +784,8 @@ const VehicleTable: React.FC = () => {
                         </PopoverContent>
                       </Popover>
 
-                      <Button 
-                        onClick={handleAssign} 
+                      <Button
+                        onClick={handleAssign}
                         disabled={selectedBanks.length === 0 || assignLoading}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
@@ -802,7 +802,7 @@ const VehicleTable: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
               {assignedBanksLoading ? (
                 <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
                   <div className="flex items-center gap-2 mb-3">
@@ -841,15 +841,21 @@ const VehicleTable: React.FC = () => {
                             </p>
                           </div>
                         </div>
-
+                        {item.rejection_reason && item.rejection_reason !== "N/A" && (
+                          <span
+                            className={`text-sm italic ${item.bank_status === "rejected" ? "text-red-600" : "text-gray-600"
+                              }`}
+                          >
+                            {item.rejection_reason}
+                          </span>
+                        )}
                         <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${
-                            item.bank_status === "pending"
+                          className={`px-3 py-1 text-xs font-medium rounded-full ${item.bank_status === "pending"
                               ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
                               : item.bank_status === "approved"
-                              ? "bg-green-100 text-green-800 border border-green-200"
-                              : "bg-gray-100 text-gray-800 border border-gray-200"
-                          }`}
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-gray-100 text-gray-800 border border-gray-200"
+                            }`}
                         >
                           {item.bank_status?.toUpperCase() || "UNKNOWN"}
                         </span>
@@ -1008,15 +1014,14 @@ const VehicleTable: React.FC = () => {
                         </td>
                         <td className="p-3">
                           <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${
-                              loan.status === "approved"
+                            className={`px-2 py-1 rounded text-xs font-medium ${loan.status === "approved"
                                 ? "bg-green-100 text-green-800"
                                 : loan.status === "rejected"
-                                ? "bg-red-100 text-red-800"
-                                : loan.status === "cancel"
-                                ? "bg-gray-100 text-gray-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
+                                  ? "bg-red-100 text-red-800"
+                                  : loan.status === "cancel"
+                                    ? "bg-gray-100 text-gray-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                              }`}
                           >
                             {((loan.status || "pending").charAt(0).toUpperCase() + (loan.status || "pending").slice(1))}
                           </span>
@@ -1090,7 +1095,7 @@ const VehicleTable: React.FC = () => {
               <iframe
                 src={documentModal.url}
                 className="w-full h-full border-0 rounded"
-                style={{ 
+                style={{
                   width: `${zoomLevel}%`,
                   height: 'auto',
                   minHeight: '500px'

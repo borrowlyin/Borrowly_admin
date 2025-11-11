@@ -623,148 +623,160 @@ const PersonalTable: React.FC = () => {
                   </div>
                 </div>
               </div>
-  <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-              <h4 className="text-lg font-semibold text-blue-800">Bank Assignment</h4>
-            </div>
-
-            {banksLoading ? (
-              <div className="flex items-center gap-2 text-blue-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Loading banks...</span>
-              </div>
-            ) : banks.length === 0 ? (
-              <p className="text-gray-600 text-sm bg-white p-3 rounded border">No banks available</p>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex gap-3 items-center">
-                  <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className="w-64 justify-between bg-white border-blue-300 hover:bg-blue-50"
-                      >
-                        {selectedBanks.length > 0
-                          ? `${selectedBanks.length} bank(s) selected`
-                          : "Select banks"}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-
-                    <PopoverContent className="w-64 p-2 max-h-60 overflow-y-auto">
-                      {(() => {
-                        const availableBanks = banks.filter(
-                          (bank) =>
-                            !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
-                        );
-
-                        return availableBanks.length > 0 ? (
-                          availableBanks.map((bank) => {
-                            const bankId = bank.bank_id;
-                            const bankName = bank.bankname || bank.bank_name || bank.name;
-
-                            return (
-                              <div
-                                key={bankId}
-                                className={cn(
-                                  "flex items-center gap-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors"
-                                )}
-                                onClick={() => toggleBank(bankId)}
-                              >
-                                <Checkbox checked={selectedBanks.includes(bankId)} />
-                                <span className="text-sm font-medium">
-                                  {bankName}
-                                </span>
-                                <span className="text-xs text-gray-500">({bank.ifsccode})</span>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <p className="text-sm text-gray-500 px-2 py-1">
-                            All banks already assigned
-                          </p>
-                        );
-                      })()}
-                    </PopoverContent>
-                  </Popover>
-
-                  <Button 
-                    onClick={handleAssign} 
-                    disabled={selectedBanks.length === 0 || assignLoading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {assignLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Assigning...
-                      </>
-                    ) : (
-                      "Assign Banks"
-                    )}
-                  </Button>
+              <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <h4 className="text-lg font-semibold text-blue-800">Bank Assignment</h4>
                 </div>
-              </div>
-            )}
-          </div>
-          
-          {assignedBanksLoading ? (
-            <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                <h5 className="text-lg font-semibold text-green-800">Assigned Banks</h5>
-              </div>
-              <div className="flex items-center gap-2 text-green-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Loading assigned banks...</span>
-              </div>
-            </div>
-          ) : assignedBanks.length > 0 && (
-            <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                <h5 className="text-lg font-semibold text-green-800">Assigned Banks ({assignedBanks.length})</h5>
-              </div>
-              <div className="grid gap-3">
-                {assignedBanks.map((item) => (
-                  <div
-                    key={item.assignment_id}
-                    className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <span className="text-green-600 font-bold text-sm">
-                          {(item.bank_name || 'B').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {item.bank_name || "Unknown Bank"}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          IFSC: {item.ifsccode || "N/A"}
-                        </p>
-                      </div>
-                    </div>
 
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full ${
-                        item.bank_status === "pending"
-                          ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                          : item.bank_status === "approved"
-                          ? "bg-green-100 text-green-800 border border-green-200"
-                          : "bg-gray-100 text-gray-800 border border-gray-200"
-                      }`}
-                    >
-                      {item.bank_status?.toUpperCase() || "UNKNOWN"}
-                    </span>
+                {banksLoading ? (
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading banks...</span>
                   </div>
-                ))}
+                ) : banks.length === 0 ? (
+                  <p className="text-gray-600 text-sm bg-white p-3 rounded border">No banks available</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-3 items-center">
+                      <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-64 justify-between bg-white border-blue-300 hover:bg-blue-50"
+                          >
+                            {selectedBanks.length > 0
+                              ? `${selectedBanks.length} bank(s) selected`
+                              : "Select banks"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+
+                        <PopoverContent className="w-64 p-2 max-h-60 overflow-y-auto">
+                          {(() => {
+                            const availableBanks = banks.filter(
+                              (bank) =>
+                                !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
+                            );
+
+                            return availableBanks.length > 0 ? (
+                              availableBanks.map((bank) => {
+                                const bankId = bank.bank_id;
+                                const bankName = bank.bankname || bank.bank_name || bank.name;
+
+                                return (
+                                  <div
+                                    key={bankId}
+                                    className={cn(
+                                      "flex items-center gap-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors"
+                                    )}
+                                    onClick={() => toggleBank(bankId)}
+                                  >
+                                    <Checkbox checked={selectedBanks.includes(bankId)} />
+                                    <span className="text-sm font-medium">
+                                      {bankName}
+                                    </span>
+                                    <span className="text-xs text-gray-500">({bank.ifsccode})</span>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p className="text-sm text-gray-500 px-2 py-1">
+                                All banks already assigned
+                              </p>
+                            );
+                          })()}
+                        </PopoverContent>
+                      </Popover>
+
+                      <Button
+                        onClick={handleAssign}
+                        disabled={selectedBanks.length === 0 || assignLoading}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {assignLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Assigning...
+                          </>
+                        ) : (
+                          "Assign Banks"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+
+              {assignedBanksLoading ? (
+                <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                    <h5 className="text-lg font-semibold text-green-800">Assigned Banks</h5>
+                  </div>
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading assigned banks...</span>
+                  </div>
+                </div>
+              ) : assignedBanks.length > 0 && (
+                <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                    <h5 className="text-lg font-semibold text-green-800">Assigned Banks ({assignedBanks.length})</h5>
+                  </div>
+                  <div className="grid gap-3">
+                    {assignedBanks.map((item) => (
+                      <div
+                        key={item.assignment_id}
+                        className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 shadow-sm"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <span className="text-green-600 font-bold text-sm">
+                              {(item.bank_name || 'B').charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {item.bank_name || "Unknown Bank"}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              IFSC: {item.ifsccode || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        {/* Show rejection reason only if it exists and is not "N/A" */}
+                        {item.rejection_reason && item.rejection_reason !== "N/A" && (
+                          <span
+                            className={`text-sm italic ${item.bank_status === "rejected" ? "text-red-600" : "text-gray-600"
+                              }`}
+                          >
+                            {item.rejection_reason}
+                          </span>
+                        )}
+
+                        {/* Bank status badge */}
+                        <span
+                          className={`px-3 py-1 text-xs font-medium rounded-full ${item.bank_status === "pending"
+                              ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                              : item.bank_status === "approved"
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : item.bank_status === "rejected"
+                                  ? "bg-red-100 text-red-800 border border-red-200"
+                                  : "bg-gray-100 text-gray-800 border border-gray-200"
+                            }`}
+                        >
+                          {item.bank_status?.toUpperCase() || "UNKNOWN"}
+                        </span>
+
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <section className="bg-white rounded-lg border border-gray-100 p-4">
                 <h5 className="font-semibold text-sm text-gray-700 mb-3">Application Information</h5>
                 <dl className="grid grid-cols-1 gap-2">
@@ -799,11 +811,10 @@ const PersonalTable: React.FC = () => {
                     return (
                       <div
                         key={idx}
-                        className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${
-                          isUploaded
-                            ? "border-blue-200 bg-blue-50 hover:shadow-md"
-                            : "border-gray-200 bg-gray-50 opacity-80"
-                        }`}
+                        className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${isUploaded
+                          ? "border-blue-200 bg-blue-50 hover:shadow-md"
+                          : "border-gray-200 bg-gray-50 opacity-80"
+                          }`}
                       >
                         <FileText
                           className={`w-8 h-8 mb-3 ${isUploaded ? "text-blue-700" : "text-gray-400"}`}
@@ -833,7 +844,7 @@ const PersonalTable: React.FC = () => {
               </section>
             </div>
           )}
-        
+
 
         </div>
       ) : (
@@ -858,20 +869,19 @@ const PersonalTable: React.FC = () => {
                   <td className="px-4 py-3 border">{loan.amount ?? "-"}</td>
                   <td className="px-4 py-3 border">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        loan.status === "approved"
-                          ? "bg-green-100 text-green-800"
-                          : loan.status === "rejected"
+                      className={`px-2 py-1 rounded text-xs font-medium ${loan.status === "approved"
+                        ? "bg-green-100 text-green-800"
+                        : loan.status === "rejected"
                           ? "bg-red-100 text-red-800"
                           : loan.status === "cancel"
-                          ? "bg-gray-100 text-gray-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}
+                            ? "bg-gray-100 text-gray-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
                     >
                       {(loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 border">{formatDate(loan.createdAt)}</td>
+                  <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>
                   <td className="px-4 py-3 border">
                     <button
                       className="text-blue-600 hover:text-blue-800 font-medium"
@@ -944,7 +954,7 @@ const PersonalTable: React.FC = () => {
               <iframe
                 src={documentModal.url}
                 className="w-full h-full border-0 rounded"
-                style={{ 
+                style={{
                   width: `${zoomLevel}%`,
                   height: 'auto',
                   minHeight: '500px'

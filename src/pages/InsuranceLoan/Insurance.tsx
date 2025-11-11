@@ -103,9 +103,9 @@ const InsuranceTable: React.FC = () => {
   const [docLoadError, setDocLoadError] = useState(false);
   const table = "insurance_loans";
   const { toast } = useToast();
-  
+
   const { insurances, loading, total, totalPages, isRefreshing, lastUpdated, refetch } = useInsuranceCache(page, search, statusFilter);
-  
+
   const loans = insurances;
 
   const getStatusColor = (status?: string) => {
@@ -173,7 +173,7 @@ const InsuranceTable: React.FC = () => {
         totalCount = 0;
       }
 
-       const mapped: LoanApplication[] = data.data.map((loan: any) => ({
+      const mapped: LoanApplication[] = data.data.map((loan: any) => ({
         id: loan.id,
         fullname: loan.fullname || loan.full_name || "",
         email_address: loan.email || loan.email_address || "",
@@ -290,246 +290,246 @@ const InsuranceTable: React.FC = () => {
 
 
 
-      const [startDate, setStartDate] = useState<string | "">("");
-      const [endDate, setEndDate] = useState<string | "">("");
-      const [downloadLoading, setDownloadLoading] = useState(false);
-  
-      // New: modal state and modal-local date fields
-      const [showDownloadModal, setShowDownloadModal] = useState(false);
-      const [modalStartDate, setModalStartDate] = useState<string>("");
-      const [modalEndDate, setModalEndDate] = useState<string>("");
-  
-  
-        // Helper: convert array of objects to CSV string
-        const jsonToCsv = (data: any[]) => {
-          if (!Array.isArray(data) || data.length === 0) return "";
-          const cols = Array.from(
-            data.reduce((acc, item) => {
-              Object.keys(item).forEach((k) => acc.add(k));
-              return acc;
-            }, new Set<string>())
-          );
-          const escapeCell = (val: any) => {
-            if (val === null || val === undefined) return "";
-            const s = String(val);
-            // wrap in quotes if contains comma, quote or newline
-            if (/[",\n]/.test(s)) {
-              return `"${s.replace(/"/g, '""')}"`;
-            }
-            return s;
-          };
-          const header = cols.join(",");
-          const rows = data.map((row) => cols.map((c) => escapeCell(row[c] ?? "")).join(","));
-          return [header, ...rows].join("\n");
-        };
-        
-      const handleDownload = async (from?: string, to?: string) => {
-        setDownloadLoading(true);
-        try {
-          const params = new URLSearchParams();
-          if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
-          if (from) params.append("startDate", from);
-          if (to) params.append("endDate", to);
-    
-          const url = `${API_BASE_URL}/api/insuranceloan/InsureLoanslist/download?${params.toString()}`;
-    
-          const res = await fetch(url, {
-            headers: {
-              Accept: "application/json",
-            },
-          });
-    
-          if (!res.ok) {
-            const txt = await res.text().catch(() => "");
-            console.error("download non-OK:", res.status, txt);
-            throw new Error(`Download failed: ${res.status}`);
-          }
-    
-          const payload = await res.json().catch((e) => {
-            console.error("Failed to parse download JSON:", e);
-            return null;
-          });
-    
-          // Expect server to return { message, count, loans } as in your controller
-          const loansData = payload?.loans ?? payload?.data ?? payload;
-          if (!Array.isArray(loansData) || loansData.length === 0) {
-            toast({
-              title: "No records",
-              description: "No loan records found for the selected filters.",
-              variant: "warning"
-            });
-            setDownloadLoading(false);
-            return;
-          }
-    
-          const csv = jsonToCsv(loansData);
-          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-          const filename = `Insurance-loans-${from || "all"}-to-${to || "all"}-${timestamp}.csv`;
-    
-          // create link and click
-          const link = document.createElement("a");
-          const urlBlob = URL.createObjectURL(blob);
-          link.href = urlBlob;
-          link.setAttribute("download", filename);
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          URL.revokeObjectURL(urlBlob);
-    
-          toast({
-            title: "Downloaded",
-            description: `Exported ${loansData.length} records.`,
-          });
-        } catch (err) {
-          toast({
-            title: "Error",
-            description: "Failed to download list. Check console/network.",
-            variant: "destructive",
-          });
-        } finally {
-          setDownloadLoading(false);
-        }
-      };
-  
-        // New: open modal — initialize modal fields with current state values
-    const openDownloadModal = () => {
-      setModalStartDate(startDate || "");
-      setModalEndDate(endDate || "");
-      setShowDownloadModal(true);
+  const [startDate, setStartDate] = useState<string | "">("");
+  const [endDate, setEndDate] = useState<string | "">("");
+  const [downloadLoading, setDownloadLoading] = useState(false);
+
+  // New: modal state and modal-local date fields
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [modalStartDate, setModalStartDate] = useState<string>("");
+  const [modalEndDate, setModalEndDate] = useState<string>("");
+
+
+  // Helper: convert array of objects to CSV string
+  const jsonToCsv = (data: any[]) => {
+    if (!Array.isArray(data) || data.length === 0) return "";
+    const cols = Array.from(
+      data.reduce((acc, item) => {
+        Object.keys(item).forEach((k) => acc.add(k));
+        return acc;
+      }, new Set<string>())
+    );
+    const escapeCell = (val: any) => {
+      if (val === null || val === undefined) return "";
+      const s = String(val);
+      // wrap in quotes if contains comma, quote or newline
+      if (/[",\n]/.test(s)) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
     };
-  
-    // New: confirm modal and trigger download
-    const confirmDownloadFromModal = async () => {
-      // Optionally set global start/end date if you want to reflect picked dates in header inputs
-      setStartDate(modalStartDate);
-      setEndDate(modalEndDate);
-      setShowDownloadModal(false);
-      await handleDownload(modalStartDate || undefined, modalEndDate || undefined);
-    };
-    const [banks, setBanks] = useState<{ id: string; bank_name: string }[]>([]);
-    const [banksLoading, setBanksLoading] = useState(false);
-    useEffect(() => {
-      const fetchBanks = async () => {
-        setBanksLoading(true);
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/getAllBanks`);
-          if (!res.ok) throw new Error("Failed to fetch banks");
-          const data = await res.json();
-          const list = data?.data ?? [];
-          setBanks(list);
-        } catch (err) {
-          console.error("Error fetching banks:", err);
-          toast({
-            title: "Error",
-            description: "Failed to load bank list",
-            variant: "destructive",
-          });
-        } finally {
-          setBanksLoading(false);
-        }
-      };
-  
-      fetchBanks();
-    }, []);
-    const [selectedBanks, setSelectedBanks] = useState([]);
-    const [open, setOpen] = useState(false);
-    const [assignLoading, setAssignLoading] = useState(false);
-  
-    const toggleBank = (bank_id) => {
-      setSelectedBanks((prev) =>
-        prev.includes(bank_id)
-          ? prev.filter((bank_id) => bank_id !== bank_id)
-          : [...prev, bank_id]
-      );
-    };
-    const handleAssign = async () => {
-      if (!selectedLoan?.id) {
+    const header = cols.join(",");
+    const rows = data.map((row) => cols.map((c) => escapeCell(row[c] ?? "")).join(","));
+    return [header, ...rows].join("\n");
+  };
+
+  const handleDownload = async (from?: string, to?: string) => {
+    setDownloadLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
+      if (from) params.append("startDate", from);
+      if (to) params.append("endDate", to);
+
+      const url = `${API_BASE_URL}/api/insuranceloan/InsureLoanslist/download?${params.toString()}`;
+
+      const res = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        console.error("download non-OK:", res.status, txt);
+        throw new Error(`Download failed: ${res.status}`);
+      }
+
+      const payload = await res.json().catch((e) => {
+        console.error("Failed to parse download JSON:", e);
+        return null;
+      });
+
+      // Expect server to return { message, count, loans } as in your controller
+      const loansData = payload?.loans ?? payload?.data ?? payload;
+      if (!Array.isArray(loansData) || loansData.length === 0) {
         toast({
-          title: "Error",
-          description: "No loan selected to assign.",
-          variant: "destructive",
+          title: "No records",
+          description: "No loan records found for the selected filters.",
+          variant: "warning"
         });
+        setDownloadLoading(false);
         return;
       }
-  
-      if (selectedBanks.length === 0) {
-        toast({
-          title: "Error",
-          description: "Please select at least one bank.",
-          variant: "destructive",
-        });
-        return;
-      }
-  
-      setAssignLoading(true);
+
+      const csv = jsonToCsv(loansData);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `Insurance-loans-${from || "all"}-to-${to || "all"}-${timestamp}.csv`;
+
+      // create link and click
+      const link = document.createElement("a");
+      const urlBlob = URL.createObjectURL(blob);
+      link.href = urlBlob;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(urlBlob);
+
+      toast({
+        title: "Downloaded",
+        description: `Exported ${loansData.length} records.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to download list. Check console/network.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  // New: open modal — initialize modal fields with current state values
+  const openDownloadModal = () => {
+    setModalStartDate(startDate || "");
+    setModalEndDate(endDate || "");
+    setShowDownloadModal(true);
+  };
+
+  // New: confirm modal and trigger download
+  const confirmDownloadFromModal = async () => {
+    // Optionally set global start/end date if you want to reflect picked dates in header inputs
+    setStartDate(modalStartDate);
+    setEndDate(modalEndDate);
+    setShowDownloadModal(false);
+    await handleDownload(modalStartDate || undefined, modalEndDate || undefined);
+  };
+  const [banks, setBanks] = useState<{ id: string; bank_name: string }[]>([]);
+  const [banksLoading, setBanksLoading] = useState(false);
+  useEffect(() => {
+    const fetchBanks = async () => {
+      setBanksLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/loans/${table}/${selectedLoan.id}/assign`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            table,                        // name of table (e.g. "personal_loans")
-            loanId: selectedLoan.id,      // the loan id
-            bankIds: selectedBanks,       // array of bank ids
-          }),
-        });
-  
+        const res = await fetch(`${API_BASE_URL}/api/getAllBanks`);
+        if (!res.ok) throw new Error("Failed to fetch banks");
         const data = await res.json();
-  
-        if (!res.ok) throw new Error(data.message || "Failed to assign banks");
-  
-        toast({
-          title: "Success",
-          description: `${selectedBanks.length} bank(s) assigned successfully.`,
-        });
-  
-        setSelectedBanks([]); // reset after success
-        // Refresh assigned banks list
-        if (selectedLoan?.id && table) {
-          fetchLoanStatuses(selectedLoan.id, table);
-        }
+        const list = data?.data ?? [];
+        setBanks(list);
       } catch (err) {
-        console.error("Error assigning loan to bank:", err);
+        console.error("Error fetching banks:", err);
         toast({
           title: "Error",
-          description: "Failed to assign bank(s). Check console for details.",
+          description: "Failed to load bank list",
           variant: "destructive",
         });
       } finally {
-        setAssignLoading(false);
+        setBanksLoading(false);
       }
     };
-    const fetchLoanStatuses = async (loanId, loanType) => {
-      setAssignedBanksLoading(true);
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/loans/${loanType}/${loanId}/statuses`);
-        const data = await res.json();
-  
-        if (!res.ok) throw new Error(data.message || "Failed to fetch statuses");
-  
-        if (data.success) {
-          setAssignedBanks(data.data || []);
-        } else {
-          setAssignedBanks([]);
-        }
-      } catch (err) {
-        console.error("Error fetching loan statuses:", err);
-        setAssignedBanks([]);
-      } finally {
-        setAssignedBanksLoading(false);
-      }
-    };
-    useEffect(() => {
+
+    fetchBanks();
+  }, []);
+  const [selectedBanks, setSelectedBanks] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  const toggleBank = (bank_id) => {
+    setSelectedBanks((prev) =>
+      prev.includes(bank_id)
+        ? prev.filter((bank_id) => bank_id !== bank_id)
+        : [...prev, bank_id]
+    );
+  };
+  const handleAssign = async () => {
+    if (!selectedLoan?.id) {
+      toast({
+        title: "Error",
+        description: "No loan selected to assign.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedBanks.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one bank.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAssignLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/loans/${table}/${selectedLoan.id}/assign`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          table,                        // name of table (e.g. "personal_loans")
+          loanId: selectedLoan.id,      // the loan id
+          bankIds: selectedBanks,       // array of bank ids
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to assign banks");
+
+      toast({
+        title: "Success",
+        description: `${selectedBanks.length} bank(s) assigned successfully.`,
+      });
+
+      setSelectedBanks([]); // reset after success
+      // Refresh assigned banks list
       if (selectedLoan?.id && table) {
         fetchLoanStatuses(selectedLoan.id, table);
       }
-    }, [selectedLoan, table]);
-  
-    const availableBanks = banks.filter(
-      (bank) => !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
-    );
+    } catch (err) {
+      console.error("Error assigning loan to bank:", err);
+      toast({
+        title: "Error",
+        description: "Failed to assign bank(s). Check console for details.",
+        variant: "destructive",
+      });
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+  const fetchLoanStatuses = async (loanId, loanType) => {
+    setAssignedBanksLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/loans/${loanType}/${loanId}/statuses`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to fetch statuses");
+
+      if (data.success) {
+        setAssignedBanks(data.data || []);
+      } else {
+        setAssignedBanks([]);
+      }
+    } catch (err) {
+      console.error("Error fetching loan statuses:", err);
+      setAssignedBanks([]);
+    } finally {
+      setAssignedBanksLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (selectedLoan?.id && table) {
+      fetchLoanStatuses(selectedLoan.id, table);
+    }
+  }, [selectedLoan, table]);
+
+  const availableBanks = banks.filter(
+    (bank) => !assignedBanks.some((assigned) => assigned.bank_id === bank.bank_id)
+  );
 
   return (
     <motion.div
@@ -600,81 +600,81 @@ const InsuranceTable: React.FC = () => {
                 <SelectItem value="cancel">Cancel</SelectItem>
               </SelectContent>
             </Select>
-              <div>
-                <Button
-                  onClick={openDownloadModal}
-                  disabled={downloadLoading}
-                  title="Download filtered loan list"
-                >
-                  {downloadLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Downloading...
-                    </>
-                  ) : (
-                    "Download"
-                  )}
-                </Button>
-              </div>
+            <div>
+              <Button
+                onClick={openDownloadModal}
+                disabled={downloadLoading}
+                title="Download filtered loan list"
+              >
+                {downloadLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Downloading...
+                  </>
+                ) : (
+                  "Download"
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {showDownloadModal && (
-                    // overlay
-                    <div className="fixed inset-0 z-50 flex items-center justify-center">
-                      <div
-                        className="absolute inset-0 bg-black/40"
-                        onClick={() => setShowDownloadModal(false)}
-                        aria-hidden
-                      />
-                      <div className="relative bg-white rounded-lg shadow-lg w-[95%] max-w-md p-5 z-10">
-                        <h3 className="text-lg font-semibold mb-3">Export Loan List</h3>
-                        <p className="text-sm text-gray-600 mb-4">Choose a date range to export (optional).</p>
-            
-                        <div className="grid gap-3">
-                          <label className="text-xs text-gray-700">
-                            Start date
-                            <input
-                              type="date"
-                              value={modalStartDate}
-                              onChange={(e) => setModalStartDate(e.target.value)}
-                              className="mt-1 w-full border px-2 py-1 rounded text-sm"
-                            />
-                          </label>
-            
-                          <label className="text-xs text-gray-700">
-                            End date
-                            <input
-                              type="date"
-                              value={modalEndDate}
-                              onChange={(e) => setModalEndDate(e.target.value)}
-                              className="mt-1 w-full border px-2 py-1 rounded text-sm"
-                            />
-                          </label>
-                        </div>
-            
-                        <div className="flex justify-end gap-3 mt-4">
-                          <Button variant="outline" onClick={() => setShowDownloadModal(false)}>
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={confirmDownloadFromModal}
-                            disabled={downloadLoading}
-                          >
-                            {downloadLoading ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                Downloading...
-                              </>
-                            ) : (
-                              "Confirm & Download"
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+        // overlay
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowDownloadModal(false)}
+            aria-hidden
+          />
+          <div className="relative bg-white rounded-lg shadow-lg w-[95%] max-w-md p-5 z-10">
+            <h3 className="text-lg font-semibold mb-3">Export Loan List</h3>
+            <p className="text-sm text-gray-600 mb-4">Choose a date range to export (optional).</p>
+
+            <div className="grid gap-3">
+              <label className="text-xs text-gray-700">
+                Start date
+                <input
+                  type="date"
+                  value={modalStartDate}
+                  onChange={(e) => setModalStartDate(e.target.value)}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-700">
+                End date
+                <input
+                  type="date"
+                  value={modalEndDate}
+                  onChange={(e) => setModalEndDate(e.target.value)}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-4">
+              <Button variant="outline" onClick={() => setShowDownloadModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDownloadFromModal}
+                disabled={downloadLoading}
+              >
+                {downloadLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Downloading...
+                  </>
+                ) : (
+                  "Confirm & Download"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading / Empty / Table / Details */}
       {loading ? (
@@ -726,13 +726,12 @@ const InsuranceTable: React.FC = () => {
 
                   <div className="text-right">
                     <span
-                      className={`text-sm font-medium px-3 py-1 rounded-full ${
-                        selectedLoan.status === "approved"
+                      className={`text-sm font-medium px-3 py-1 rounded-full ${selectedLoan.status === "approved"
                           ? "bg-green-500 text-white"
                           : selectedLoan.status === "rejected"
-                          ? "bg-red-500 text-white"
-                          : "bg-yellow-400 text-black"
-                      }`}
+                            ? "bg-red-500 text-white"
+                            : "bg-yellow-400 text-black"
+                        }`}
                     >
                       {(selectedLoan.status ?? "pending").toUpperCase()}
                     </span>
@@ -808,8 +807,8 @@ const InsuranceTable: React.FC = () => {
                         </PopoverContent>
                       </Popover>
 
-                      <Button 
-                        onClick={handleAssign} 
+                      <Button
+                        onClick={handleAssign}
                         disabled={selectedBanks.length === 0 || assignLoading}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
@@ -826,7 +825,7 @@ const InsuranceTable: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
               {assignedBanksLoading ? (
                 <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
                   <div className="flex items-center gap-2 mb-3">
@@ -865,15 +864,21 @@ const InsuranceTable: React.FC = () => {
                             </p>
                           </div>
                         </div>
-
+                        {item.rejection_reason && item.rejection_reason !== "N/A" && (
+                          <span
+                            className={`text-sm italic ${item.bank_status === "rejected" ? "text-red-600" : "text-gray-600"
+                              }`}
+                          >
+                            {item.rejection_reason}
+                          </span>
+                        )}
                         <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${
-                            item.bank_status === "pending"
+                          className={`px-3 py-1 text-xs font-medium rounded-full ${item.bank_status === "pending"
                               ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
                               : item.bank_status === "approved"
-                              ? "bg-green-100 text-green-800 border border-green-200"
-                              : "bg-gray-100 text-gray-800 border border-gray-200"
-                          }`}
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-gray-100 text-gray-800 border border-gray-200"
+                            }`}
                         >
                           {item.bank_status?.toUpperCase() || "UNKNOWN"}
                         </span>
@@ -918,11 +923,10 @@ const InsuranceTable: React.FC = () => {
                     return (
                       <div
                         key={idx}
-                        className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${
-                          isUploaded
+                        className={`border rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] ${isUploaded
                             ? "border-blue-200 bg-blue-50 hover:shadow-md"
                             : "border-gray-200 bg-gray-50 opacity-80"
-                        }`}
+                          }`}
                       >
                         <FileText
                           className={`w-8 h-8 mb-3 ${isUploaded ? "text-blue-700" : "text-gray-400"}`}
@@ -952,7 +956,7 @@ const InsuranceTable: React.FC = () => {
               </section>
             </div>
           )}
-      
+
         </div>
       ) : (
         // Table list
@@ -963,7 +967,7 @@ const InsuranceTable: React.FC = () => {
                 <th className="px-4 py-3 border">Name</th>
                 <th className="px-4 py-3 border">Phone</th>
                 <th className="px-4 py-3 border">Annual Income</th>
-                 <th className="px-4 py-3 border">Status</th>
+                <th className="px-4 py-3 border">Status</th>
                 <th className="px-4 py-3 border">Submitted</th>
                 <th className="px-4 py-3 border">Actions</th>
               </tr>
@@ -974,29 +978,28 @@ const InsuranceTable: React.FC = () => {
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.fullname ?? loan.full_name ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.mobile ?? loan.contact_number ?? "-"}</td>
-                   <td className="px-4 py-3 border">
+                  <td className="px-4 py-3 border">
 
-                     {Number(loan.amount)
-                            ? `₹${Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-                            : String(loan.amount ?? "-")}
-                   </td>
+                    {Number(loan.amount)
+                      ? `₹${Number(loan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                      : String(loan.amount ?? "-")}
+                  </td>
                   <td className="px-4 py-3 border">
                     <span
-  className={`px-2 py-1 rounded text-xs font-medium ${
-    loan.status === "approved"
-      ? "bg-green-100 text-green-800"
-      : loan.status === "rejected"
-      ? "bg-red-100 text-red-800"
-      : loan.status === "cancel"
-      ? "bg-gray-100 text-gray-800"
-      : "bg-yellow-100 text-yellow-800"
-  }`}
->
-  {(loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1)}
-</span>
+                      className={`px-2 py-1 rounded text-xs font-medium ${loan.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : loan.status === "rejected"
+                            ? "bg-red-100 text-red-800"
+                            : loan.status === "cancel"
+                              ? "bg-gray-100 text-gray-800"
+                              : "bg-yellow-100 text-yellow-800"
+                        }`}
+                    >
+                      {(loan.status ?? "pending").charAt(0).toUpperCase() + (loan.status ?? "pending").slice(1)}
+                    </span>
 
                   </td>
-                 
+
                   <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>
                   <td className="px-4 py-3 border">
                     <button
@@ -1070,7 +1073,7 @@ const InsuranceTable: React.FC = () => {
               <iframe
                 src={documentModal.url}
                 className="w-full h-full border-0 rounded"
-                style={{ 
+                style={{
                   width: `${zoomLevel}%`,
                   height: 'auto',
                   minHeight: '500px'

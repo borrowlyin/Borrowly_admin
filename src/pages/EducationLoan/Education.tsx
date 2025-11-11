@@ -824,7 +824,14 @@ const EducationTable: React.FC = () => {
                             </p>
                           </div>
                         </div>
-
+{item.rejection_reason && item.rejection_reason !== "N/A" && (
+                          <span
+                            className={`text-sm italic ${item.bank_status === "rejected" ? "text-red-600" : "text-gray-600"
+                              }`}
+                          >
+                            {item.rejection_reason}
+                          </span>
+                        )}
                         <span
                           className={`px-3 py-1 text-xs font-medium rounded-full ${
                             item.bank_status === "pending"

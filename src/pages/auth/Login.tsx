@@ -78,7 +78,8 @@ export const Login: React.FC = () => {
         description: "Welcome back to Borrowly.in Admin!",
       });
     } catch (error: any) {
-  
+      // Error is already set in the context, so we don't need to show toast here
+      // The error will be displayed in the UI below
     } finally {
       setIsLoading(false);
     }
