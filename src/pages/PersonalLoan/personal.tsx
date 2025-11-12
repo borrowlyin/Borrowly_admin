@@ -58,6 +58,7 @@ const PersonalTable: React.FC = () => {
   const [documentModal, setDocumentModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
   const [zoomLevel, setZoomLevel] = useState(100);
   const [docLoadError, setDocLoadError] = useState(false);
+  const [rejectionModal, setRejectionModal] = useState<{ isOpen: boolean; bankName: string; reason: string }>({ isOpen: false, bankName: '', reason: '' });
 
 
   const fetchLoanDetails = async (id: string) => {
@@ -135,7 +136,9 @@ const PersonalTable: React.FC = () => {
   // Document fields for personal loans
   const documentsKeys = [
     "panurl",
-    "adharurl"
+    "adharurl",
+    "bankstatement_url",
+    "payslip_url"
   ];
 
   // Signed URL helper
@@ -725,7 +728,7 @@ const PersonalTable: React.FC = () => {
                 <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-200">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    <h5 className="text-lg font-semibold text-green-800">Assigned Banks ({assignedBanks.length})</h5>
+                    <h5 className="text-lg font-semibold text-green-800">Assigned Banks ({assignedBanks?.length || 0})</h5>
                   </div>
                   <div className="grid gap-3">
                     {assignedBanks.map((item) => (
@@ -748,29 +751,35 @@ const PersonalTable: React.FC = () => {
                             </p>
                           </div>
                         </div>
-                        {/* Show rejection reason only if it exists and is not "N/A" */}
-                        {item.rejection_reason && item.rejection_reason !== "N/A" && (
+                        <div className="flex items-center gap-2">
+                          {/* Bank status badge */}
                           <span
-                            className={`text-sm italic ${item.bank_status === "rejected" ? "text-red-600" : "text-gray-600"
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${item.bank_status === "pending"
+                                ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                : item.bank_status === "approved"
+                                  ? "bg-green-100 text-green-800 border border-green-200"
+                                  : item.bank_status === "rejected"
+                                    ? "bg-red-100 text-red-800 border border-red-200"
+                                    : "bg-gray-100 text-gray-800 border border-gray-200"
                               }`}
                           >
-                            {item.rejection_reason}
+                            {item.bank_status?.toUpperCase() || "UNKNOWN"}
                           </span>
-                        )}
-
-                        {/* Bank status badge */}
-                        <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${item.bank_status === "pending"
-                              ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                              : item.bank_status === "approved"
-                                ? "bg-green-100 text-green-800 border border-green-200"
-                                : item.bank_status === "rejected"
-                                  ? "bg-red-100 text-red-800 border border-red-200"
-                                  : "bg-gray-100 text-gray-800 border border-gray-200"
-                            }`}
-                        >
-                          {item.bank_status?.toUpperCase() || "UNKNOWN"}
-                        </span>
+                          
+                          {/* View Details button for rejected status with reason */}
+                          {item.bank_status === "rejected" && item.rejection_reason && item.rejection_reason !== "N/A" && (
+                            <button
+                              onClick={() => setRejectionModal({ 
+                                isOpen: true, 
+                                bankName: item.bank_name || "Unknown Bank", 
+                                reason: item.rejection_reason 
+                              })}
+                              className="text-xs text-red-600 hover:text-red-800 underline font-medium"
+                            >
+                              View Details
+                            </button>
+                          )}
+                        </div>
 
                       </div>
                     ))}
@@ -968,6 +977,43 @@ const PersonalTable: React.FC = () => {
                 Failed to load the document. It may be restricted or unavailable.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Reason Modal */}
+      {rejectionModal.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-red-700">Rejection Details</h3>
+              <button
+                onClick={() => setRejectionModal({ isOpen: false, bankName: '', reason: '' })}
+                className="text-gray-500 hover:text-gray-800 text-2xl font-semibold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Bank Name:</label>
+                <p className="text-gray-900 font-medium">{rejectionModal.bankName}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Rejection Reason:</label>
+                <p className="text-red-600 font-medium py-3 rounded-md">
+                  {rejectionModal.reason}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <Button
+                onClick={() => setRejectionModal({ isOpen: false, bankName: '', reason: '' })}
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       )}

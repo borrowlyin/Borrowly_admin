@@ -60,7 +60,7 @@ const GoldLoanDetails: React.FC = () => {
     const documents = [
         { name: "PAN Card", url: loanDetails?.pan_card_url },
         { name: "Aadhar Card", url: loanDetails?.aadhar_card_url },
-        // Add any other document URLs you need
+        { name: "Bank Statement", url: loanDetails?.bankstatement_url },
     ];
 
     // Fetch the signed URL for the document
@@ -124,6 +124,7 @@ const GoldLoanDetails: React.FC = () => {
         ([key, value]) =>
             key !== "pan_card_url" &&
             key !== "aadhar_card_url" &&
+            key !== "bankstatement_url" &&
             key !== "id" &&
             key !== "created_at" &&
             key !== "updated_at" &&

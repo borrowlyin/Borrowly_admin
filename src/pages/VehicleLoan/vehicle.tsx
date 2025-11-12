@@ -50,6 +50,7 @@ const VehicleTable: React.FC = () => {
   const [documentModal, setDocumentModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
   const [zoomLevel, setZoomLevel] = useState(100);
   const [docLoadError, setDocLoadError] = useState(false);
+  const [documentLoading, setDocumentLoading] = useState<string | null>(null);
   // ----------- Field Label Map (kept as in your original) -----------
   const fieldLabelMap: Record<string, string> = {
     fullname: "Applicant Full Name",
@@ -963,16 +964,26 @@ const VehicleTable: React.FC = () => {
                         {isUploaded ? (
                           <button
                             onClick={async () => {
+                              setDocumentLoading(key);
                               const signed = await fetchSignedUrl(value);
                               if (signed) {
                                 setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
                                 setZoomLevel(100);
                                 setDocLoadError(false);
                               }
+                              setDocumentLoading(null);
                             }}
-                            className="text-blue-600 text-sm font-semibold hover:underline"
+                            disabled={documentLoading === key}
+                            className="text-blue-600 text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                           >
-                            View Document
+                            {documentLoading === key ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              "View Document"
+                            )}
                           </button>
                         ) : (
                           <span className="text-gray-500 text-sm italic">Not Uploaded</span>

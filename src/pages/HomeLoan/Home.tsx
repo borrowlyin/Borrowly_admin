@@ -53,6 +53,7 @@ const HomeTable: React.FC = () => {
   const [documentModal, setDocumentModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
   const [zoomLevel, setZoomLevel] = useState(100);
   const [docLoadError, setDocLoadError] = useState(false);
+  const [documentLoading, setDocumentLoading] = useState<string | null>(null);
   
   const { data, loading, error, refresh, isRefreshing } = useHomeLoanCache(page, search, statusFilter);
   const lastUpdated = data?.timestamp;
@@ -148,6 +149,10 @@ const HomeTable: React.FC = () => {
     reason: "Reason",
     status_reason: "Reason",
     created_at: "Created On",
+    panurl: "PAN Card",
+    adharurl: "Aadhaar Card",
+    bankstatement_url: "Bank Statement",
+    payslip_url: "Payslip",
   };
 
   const formatKey = (k: string) => fieldLabelMap[k] ?? k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -155,7 +160,9 @@ const HomeTable: React.FC = () => {
   // Document fields for home loans
   const documentsKeys = [
     "panurl",
-    "adharurl"
+    "adharurl",
+    "bankstatement_url",
+    "payslip_url"
   ];
 
   // Signed URL helper
@@ -793,7 +800,7 @@ const HomeTable: React.FC = () => {
                 <dl className="grid grid-cols-1 gap-2">
                   {Object.entries(selectedLoan)
                     .filter(([k, v]) => {
-                      const excludeFields = ["id", "created_at", "updated_at", "generateduserid", "generated_user_id", "panurl", "adharurl", "pan_card_url", "aadhar_card_url", "pan_url", "aadhaar_url"];
+                      const excludeFields = ["id", "created_at", "updated_at", "generateduserid", "generated_user_id", "panurl", "adharurl", "pan_card_url", "aadhar_card_url", "pan_url", "aadhaar_url", "bankstatement_url", "payslip_url"];
                       const isUrl = typeof v === "string" && (v.includes("storage.googleapis.com") || v.startsWith("http"));
                       return !excludeFields.includes(k) && !isUrl && v != null && v !== "" && typeof v !== "object";
                     })
@@ -835,16 +842,26 @@ const HomeTable: React.FC = () => {
                         {isUploaded ? (
                           <button
                             onClick={async () => {
+                              setDocumentLoading(key);
                               const signed = await fetchSignedUrl(value);
                               if (signed) {
                                 setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
                                 setZoomLevel(100);
                                 setDocLoadError(false);
                               }
+                              setDocumentLoading(null);
                             }}
-                            className="text-blue-600 text-sm font-semibold hover:underline"
+                            disabled={documentLoading === key}
+                            className="text-blue-600 text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                           >
-                            View Document
+                            {documentLoading === key ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              "View Document"
+                            )}
                           </button>
                         ) : (
                           <span className="text-gray-500 text-sm italic">Not Uploaded</span>

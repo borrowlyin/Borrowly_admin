@@ -69,6 +69,7 @@ const GoldTable: React.FC = () => {
     created_at: "Created On",
     pan_card_url: "PAN Card",
     aadhar_card_url: "Aadhaar Card",
+    bankstatement_url: "Bank Statement",
     email_address: "Email Address",
   };
 
@@ -83,7 +84,7 @@ const GoldTable: React.FC = () => {
     "created_at",
   ];
 
-  const documentsKeys = ["pan_card_url", "aadhar_card_url"]; // extend if more doc fields exist
+  const documentsKeys = ["pan_card_url", "aadhar_card_url", "bankstatement_url"];
 
   const excludedKeys = [
     ...personalDetailsKeys,

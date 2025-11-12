@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBankAggregatorsCache } from "@/hooks/useBankAggregatorsCache";
 
-// ✅ Signed URL fetcher
+// ✅ Signed URL fetcher for bank documents
 const fetchSignedUrl = async (documentUrl) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/files/sign-urls`, {
+    const res = await fetch(`${API_BASE_URL}/api/bank-file-urls`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ urls: [documentUrl] }),

@@ -7,7 +7,7 @@ import { useAnalyticsCache } from "@/hooks/useAnalyticsCache";
 type TimePeriod = "today" | "3days" | "1week" | "10days" | "1month" | "1year";
 
 const Analysis = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1month");
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("today");
   const { data, loading, isRefreshing, lastUpdated, refetch } = useAnalyticsCache(selectedPeriod);
 
   const convertPaisaToRupee = (paisa: number) => paisa / 100;

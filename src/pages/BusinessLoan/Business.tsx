@@ -62,7 +62,9 @@ const formatDate = (d?: string) =>
 // Document fields for business loans
 const documentsKeys = [
   "pan_url",
-  "aadhaar_url"
+  "aadhaar_url",
+  "bankstatement_url",
+  "payslip_url"
 ];
 
 // Signed URL helper
@@ -104,6 +106,7 @@ const BusinessTable: React.FC = () => {
   const [documentModal, setDocumentModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
   const [zoomLevel, setZoomLevel] = useState(100);
   const [docLoadError, setDocLoadError] = useState(false);
+  const [documentLoading, setDocumentLoading] = useState<string | null>(null);
   
   const { data, loading, error, refresh, isRefreshing } = useBusinessLoanCache(page, search, statusFilter);
   const lastUpdated = data?.timestamp;
@@ -820,16 +823,40 @@ const BusinessTable: React.FC = () => {
                         {isUploaded ? (
                           <button
                             onClick={async () => {
+                              setDocumentLoading(key);
                               const signed = await fetchSignedUrl(value, toast);
                               if (signed) {
-                                setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
-                                setZoomLevel(100);
-                                setDocLoadError(false);
+                                // Test if the URL is accessible before opening modal
+                                try {
+                                  const testResponse = await fetch(signed, { method: 'HEAD' });
+                                  if (testResponse.ok) {
+                                    setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
+                                    setZoomLevel(100);
+                                    setDocLoadError(false);
+                                  } else {
+                                    throw new Error('Document not accessible');
+                                  }
+                                } catch (error) {
+                                  toast({
+                                    title: "Document Not Found",
+                                    description: `The ${formatKey(key)} document is not available or has been removed from storage.`,
+                                    variant: "destructive",
+                                  });
+                                }
                               }
+                              setDocumentLoading(null);
                             }}
-                            className="text-blue-600 text-sm font-semibold hover:underline"
+                            disabled={documentLoading === key}
+                            className="text-blue-600 text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                           >
-                            View Document
+                            {documentLoading === key ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              "View Document"
+                            )}
                           </button>
                         ) : (
                           <span className="text-gray-500 text-sm italic">Not Uploaded</span>
