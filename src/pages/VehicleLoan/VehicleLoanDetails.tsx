@@ -62,6 +62,7 @@ const VehicleLoanDetails: React.FC = () => {
     coapplicantincomeproof: "Co-applicant Income Proof",
     coapplicantaadhaardcard: "Co-applicant Aadhaar Card",
     coapplicantpancard: "Co-applicant PAN Card",
+    payslip: "Payslip Document",
   };
 
   const formatKey = (key: string) =>
@@ -125,6 +126,7 @@ const VehicleLoanDetails: React.FC = () => {
     "coapplicantincomeproof",
     "coapplicantaadhaardcard",
     "coapplicantpancard",
+    "payslip",
   ];
 
   const coApplicantKeys = [

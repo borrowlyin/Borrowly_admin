@@ -52,7 +52,8 @@ const EducationLoanDetails: React.FC = () => {
     "academicrecordsdoc",
     "coapplicantpandoc",
     "coapplicantaadhardoc",
-    "incomeproofdoc"
+    "incomeproofdoc",
+    "bankstatement"
   ];
 
   // Filtered documents and entries only if loanDetails is defined

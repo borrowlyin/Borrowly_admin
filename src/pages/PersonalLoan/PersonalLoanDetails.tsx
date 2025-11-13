@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -14,6 +14,10 @@ const PersonalLoanDetails: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [loanDetails, setLoanDetails] = useState<any>(null);
+
+    // Modal states for document viewing
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalContent, setModalContent] = useState<string | JSX.Element | null>(null);
 
     const fieldLabelMap: Record<string, string> = {
         fullname: "Full Name",
@@ -30,6 +34,7 @@ const PersonalLoanDetails: React.FC = () => {
         professionaltype: "Professional Type",
         status: "Application Status",
         reason: "Rejection Reason",
+        payslip: "Payslip Document",
     };
 
     const formatKey = (key: string) =>
@@ -60,6 +65,86 @@ const PersonalLoanDetails: React.FC = () => {
         fetchDetails();
     }, [id, table, toast]);
 
+    // Fetch the signed URL for the document
+    const fetchSignedUrl = async (documentUrl: string) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/files/sign-urls`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    urls: [documentUrl],
+                }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.text();
+                if (errorData.includes('NoSuchKey') || errorData.includes('No such object')) {
+                    throw new Error("Document not found in storage");
+                }
+                throw new Error("Failed to fetch signed URL");
+            }
+            const data = await res.json();
+            return data.signedUrls[0];
+        } catch (error: any) {
+            const message = error.message.includes('not found') ? 
+                "Document file not found in storage." : 
+                "Failed to load document.";
+            toast({
+                title: "Error",
+                description: message,
+                variant: "destructive",
+            });
+            return null;
+        }
+    };
+
+    // Modal handlers
+    const openModal = async (documentUrl: string) => {
+        if (!documentUrl || documentUrl.trim() === '') {
+            toast({
+                title: "Error",
+                description: "Document not available.",
+                variant: "destructive",
+            });
+            return;
+        }
+        
+        const signedUrl = await fetchSignedUrl(documentUrl);
+        if (signedUrl) {
+            setModalContent(<iframe src={signedUrl} className="w-full h-[600px]" />);
+            setIsModalOpen(true);
+        }
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setModalContent(null);
+    };
+
+    const Modal = ({ content, onClose }: { content: string | JSX.Element, onClose: () => void }) => (
+        <div className="fixed inset-0 flex items-center justify-center z-40 bg-black bg-opacity-50">
+            <div className="bg-white p-6 rounded-lg max-w-7xl w-full max-h-[90vh] overflow-auto">
+                <button
+                    onClick={onClose}
+                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+                >
+                    &times;
+                </button>
+                <div className="w-full h-full">{content}</div>
+                <div className="mt-4 text-center">
+                    <button
+                        onClick={onClose}
+                        className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[70vh]">
@@ -81,6 +166,7 @@ const PersonalLoanDetails: React.FC = () => {
             key !== "id" &&
             key !== "created_at" &&
             key !== "updated_at" &&
+            key !== "payslip" &&
             value !== null &&
             value !== "" &&
             !(typeof value === "object" && !Array.isArray(value))
@@ -146,6 +232,27 @@ const PersonalLoanDetails: React.FC = () => {
                     ))}
                 </dl>
             </section>
+
+            {/* Payslip Document */}
+            {loanDetails.payslip && loanDetails.payslip.trim() !== '' && (
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <h2 className="text-lg font-semibold text-blue-700 border-b pb-3 mb-4">
+                        Payslip Document
+                    </h2>
+                    <div className="flex items-center justify-center">
+                        <div className="border border-blue-200 bg-blue-50 rounded-xl p-5 flex flex-col items-center text-center transition transform hover:scale-[1.02] hover:shadow-md">
+                            <FileText className="w-8 h-8 mb-3 text-blue-700" />
+                            <p className="font-medium text-gray-700 mb-2 text-sm">Payslip Document</p>
+                            <button
+                                onClick={() => openModal(loanDetails.payslip)}
+                                className="text-blue-600 text-sm font-semibold hover:underline"
+                            >
+                                View Document
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            )}
         </div>
     );
 };
