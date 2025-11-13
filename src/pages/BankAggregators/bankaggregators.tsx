@@ -267,6 +267,9 @@ const BankList = () => {
                 ["Branch", selectedBank.branchname],
                 ["IFSC", selectedBank.ifsccode],
                 ["Address", selectedBank.bankaddress],
+                ["City", selectedBank.city],
+                ["State", selectedBank.state],
+                ["Pincode", selectedBank.pincode],
               ]
                 .filter(([_, value]) => value !== undefined && value !== null && value !== "")
                 .map(([key, value]) => (

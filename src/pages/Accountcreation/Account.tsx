@@ -16,6 +16,9 @@ const CreationForm = () => {
     branchName: "",
     ifscCode: "",
     bankAddress: "",
+    city: "",
+    pincode: "",
+    state: "",
   });
 
   const handleInputChange = (e) => {
@@ -42,6 +45,9 @@ const CreationForm = () => {
         branchName: "",
         ifscCode: "",
         bankAddress: "",
+        city: "",
+        pincode: "",
+        state: "",
       });
     }
   };
@@ -97,6 +103,9 @@ const CreationForm = () => {
           branchname: formData.branchName,
           ifsccode: formData.ifscCode,
           bankaddress: formData.bankAddress,
+          city: formData.city,
+          pincode: formData.pincode,
+          state: formData.state,
           profilephoto: uploadedFiles.profilePhoto || "",
           idprooffile: uploadedFiles.idProofFile || "",
           generatedBankId,
@@ -122,6 +131,9 @@ const CreationForm = () => {
         branchName: "",
         ifscCode: "",
         bankAddress: "",
+        city: "",
+        pincode: "",
+        state: "",
       });
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -274,6 +286,39 @@ const CreationForm = () => {
                 type="text"
                 name="bankAddress"
                 value={formData.bankAddress}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Pincode</label>
+              <input
+                type="text"
+                name="pincode"
+                value={formData.pincode}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+              <input
+                type="text"
+                name="state"
+                value={formData.state}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
