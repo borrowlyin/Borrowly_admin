@@ -281,10 +281,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
                 }`}
             >
               <Coins className="w-5 h-5" />
-              {!collapsed && <span>Bank Aggregators</span>}
+              {!collapsed && <span>Aggregators</span>}
             </NavLink>
           </TooltipTrigger>
-          {collapsed && <TooltipContent>Bank Aggregators</TooltipContent>}
+          {collapsed && <TooltipContent>Aggregators</TooltipContent>}
         </Tooltip>
 
 

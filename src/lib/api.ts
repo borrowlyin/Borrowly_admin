@@ -10,6 +10,9 @@ export const buildApiUrl = (endpoint: string): string => {
 export const API_ENDPOINTS = {
   ADMIN_LOGIN: "/api/admin/login",
   ADMIN_REGISTER: "/api/admin/register",
+  ADMIN_CREATE: "/api/admin/create",
+  ADMIN_STATUS: (id: string) => `/api/admin/${id}/status`,
+  GET_ALL_ADMINS: "/api/admin/getAllAdmins",
   DASHBOARD_STATS: "/api/v1/admin/dashboard/statics",
   PRODUCTS: "/api/products",
   ADMIN_PRODUCTS: "/api/admin/products",

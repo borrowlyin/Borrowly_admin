@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Eye, ArrowLeft, Image, FileText, ExternalLink, Loader2, RefreshCw } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api";
+import { Eye, ArrowLeft, Image, FileText, ExternalLink, Loader2, RefreshCw, User, Shield } from "lucide-react";
+import { API_ENDPOINTS, apiRequest } from "@/lib/api";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -35,9 +36,31 @@ const BankList = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [admins, setAdmins] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
   const limit = 10;
 
 
+
+  const fetchAdmins = async () => {
+    setAdminLoading(true);
+    try {
+      const response = await apiRequest(API_ENDPOINTS.GET_ALL_ADMINS);
+      const data = await response.json();
+      const currentAdminData = localStorage.getItem("admin_user") ? JSON.parse(localStorage.getItem("admin_user")) : null;
+      const currentAdminEmail = currentAdminData?.email;
+      setAdmins((data.admins || []).filter(admin => admin.email !== currentAdminEmail));
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to fetch admins", variant: "destructive" });
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdminMode) fetchAdmins();
+  }, [isAdminMode]);
 
   const handleViewBank = async (bank) => {
     setSelectedBank(bank);
@@ -56,19 +79,29 @@ const BankList = () => {
   const formatDate = (date) => 
     date ? new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
 
-  const filteredBanks = banks.filter((bank) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      bank.fullname?.toLowerCase().includes(s) ||
-      bank.bankname?.toLowerCase().includes(s) ||
-      bank.email?.toLowerCase().includes(s) ||
-      bank.phonenumber?.toLowerCase().includes(s)
-    );
-  });
+  const filteredData = isAdminMode 
+    ? admins.filter((admin) => {
+        if (!search) return true;
+        const s = search.toLowerCase();
+        return (
+          admin.name?.toLowerCase().includes(s) ||
+          admin.email?.toLowerCase().includes(s) ||
+          admin.role?.toLowerCase().includes(s)
+        );
+      })
+    : banks.filter((bank) => {
+        if (!search) return true;
+        const s = search.toLowerCase();
+        return (
+          bank.fullname?.toLowerCase().includes(s) ||
+          bank.bankname?.toLowerCase().includes(s) ||
+          bank.email?.toLowerCase().includes(s) ||
+          bank.phonenumber?.toLowerCase().includes(s)
+        );
+      });
 
-  const paginatedBanks = filteredBanks.slice((page - 1) * limit, page * limit);
-  const totalPagesCalculated = Math.max(1, Math.ceil(filteredBanks.length / limit));
+  const paginatedData = filteredData.slice((page - 1) * limit, page * limit);
+  const totalPagesCalculated = Math.max(1, Math.ceil(filteredData.length / limit));
   
   useEffect(() => {
     setTotalPages(totalPagesCalculated);
@@ -85,11 +118,31 @@ const BankList = () => {
         transition={{ duration: 0.25 }}
       >
         {/* Header */}
-        <div className="">
-          <h1 className="text-3xl font-bold mb-2">Bank Aggregators</h1>
-          <p className="mb-6 text-gray-500 text-[14px]">
-            Manage bank aggregator accounts and review their information.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">{isAdminMode ? 'Admin Users' : 'Bank Aggregators'}</h1>
+            <p className="mb-6 text-gray-500 text-[14px]">
+              {isAdminMode ? 'Manage admin accounts and their permissions.' : 'Manage bank aggregator accounts and review their information.'}
+            </p>
+          </div>
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => { setIsAdminMode(false); setPage(1); }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                !isAdminMode ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              <User className="w-4 h-4" /> Bank Users
+            </button>
+            <button
+              onClick={() => { setIsAdminMode(true); setPage(1); }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                isAdminMode ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              <Shield className="w-4 h-4" /> Admin Users
+            </button>
+          </div>
         </div>
 
         {/* Cache Status Indicator */}
@@ -129,44 +182,103 @@ const BankList = () => {
         </div>
 
         {/* Loading / Table */}
-        {loading ? (
+        {(loading || adminLoading) ? (
           <div className="flex justify-center items-center py-20 text-gray-500">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            Loading banks...
+            Loading {isAdminMode ? 'admins' : 'banks'}...
           </div>
-        ) : paginatedBanks.length === 0 ? (
-          <p className="text-center text-gray-500 py-10">No banks found.</p>
+        ) : paginatedData.length === 0 ? (
+          <p className="text-center text-gray-500 py-10">No {isAdminMode ? 'admins' : 'banks'} found.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border rounded-md text-sm">
               <thead className="bg-gray-100 text-left">
                 <tr>
-                  <th className="px-4 py-3 border">Name</th>
-                  <th className="px-4 py-3 border">Bank</th>
-                  <th className="px-4 py-3 border">Branch</th>
-                  <th className="px-4 py-3 border">Email</th>
-                  <th className="px-4 py-3 border">Phone</th>
-                  <th className="px-4 py-3 border">Created</th>
-                  <th className="px-4 py-3 border">Actions</th>
+                  {isAdminMode ? (
+                    <>
+                      <th className="px-4 py-3 border">Name</th>
+                      <th className="px-4 py-3 border">Email</th>
+                      <th className="px-4 py-3 border">Role</th>
+                      <th className="px-4 py-3 border">Status</th>
+                      <th className="px-4 py-3 border">Created</th>
+                      <th className="px-4 py-3 border">Actions</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-4 py-3 border">Name</th>
+                      <th className="px-4 py-3 border">Bank</th>
+                      <th className="px-4 py-3 border">Branch</th>
+                      <th className="px-4 py-3 border">Email</th>
+                      <th className="px-4 py-3 border">Phone</th>
+                      <th className="px-4 py-3 border">Created</th>
+                      <th className="px-4 py-3 border">Actions</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {paginatedBanks.map((bank, i) => (
-                  <tr key={bank.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    <td className="px-4 py-3 border">{bank.fullname ?? "-"}</td>
-                    <td className="px-4 py-3 border">{bank.bankname ?? "-"}</td>
-                    <td className="px-4 py-3 border">{bank.branchname ?? "-"}</td>
-                    <td className="px-4 py-3 border">{bank.email ?? "-"}</td>
-                    <td className="px-4 py-3 border">{bank.phonenumber ?? "-"}</td>
-                    <td className="px-4 py-3 border">{formatDate(bank.created_at)}</td>
-                    <td className="px-4 py-3 border">
-                      <button
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                        onClick={() => handleViewBank(bank)}
-                      >
-                        View
-                      </button>
-                    </td>
+                {paginatedData.map((item, i) => (
+                  <tr key={item.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    {isAdminMode ? (
+                      <>
+                        <td className="px-4 py-3 border">{item.name ?? "-"}</td>
+                        <td className="px-4 py-3 border">{item.email ?? "-"}</td>
+                        <td className="px-4 py-3 border">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            item.role === 'super_admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {item.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 border">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            item.is_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {item.is_enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 border">{formatDate(item.created_at)}</td>
+                        <td className="px-4 py-3 border">
+                          <Switch
+                            checked={item.is_enabled}
+                            onCheckedChange={async (checked) => {
+                              try {
+                                const response = await apiRequest(API_ENDPOINTS.ADMIN_STATUS(item.id), {
+                                  method: "PUT",
+                                  body: JSON.stringify({ is_enabled: checked }),
+                                });
+                                if (response.ok) {
+                                  fetchAdmins();
+                                  toast({ title: "Success", description: `Admin ${checked ? 'enabled' : 'disabled'} successfully` });
+                                } else {
+                                  toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+                                }
+                              } catch (error) {
+                                toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+                              }
+                            }}
+                            className={`${item.is_enabled ? 'data-[state=checked]:bg-green-500' : 'data-[state=unchecked]:bg-red-500'}`}
+                          />
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 border">{item.fullname ?? "-"}</td>
+                        <td className="px-4 py-3 border">{item.bankname ?? "-"}</td>
+                        <td className="px-4 py-3 border">{item.branchname ?? "-"}</td>
+                        <td className="px-4 py-3 border">{item.email ?? "-"}</td>
+                        <td className="px-4 py-3 border">{item.phonenumber ?? "-"}</td>
+                        <td className="px-4 py-3 border">{formatDate(item.created_at)}</td>
+                        <td className="px-4 py-3 border">
+                          <button
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                            onClick={() => handleViewBank(item)}
+                          >
+                            View
+                          </button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -180,7 +292,7 @@ const BankList = () => {
             Previous
           </Button>
           <p className="text-sm text-gray-600">
-            Page {page} of {totalPages}
+            Page {page} of {totalPages} ({filteredData.length} total {isAdminMode ? 'admins' : 'banks'})
           </p>
           <Button variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
             Next
