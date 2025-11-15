@@ -150,6 +150,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const data = await res.json();
       console.log(data)
       if (!res.ok) {
+        // Check if account is disabled
+        if (data.message && (data.message.includes('disabled') || data.message.includes('deactivated'))) {
+          const disabledError = {
+            message: data.message,
+            type: "auth" as const,
+            code: "ACCOUNT_DISABLED",
+          };
+          setError(disabledError);
+          throw disabledError;
+        }
         const error = handleApiError(res, data);
         setError(error);
         throw error;

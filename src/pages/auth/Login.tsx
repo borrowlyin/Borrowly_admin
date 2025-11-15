@@ -37,6 +37,7 @@ export const Login: React.FC = () => {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState("");
   const [forgotSuccess, setForgotSuccess] = useState("");
+  const [accountDisabled, setAccountDisabled] = useState(false);
   const baseUrl = API_BASE_URL;
 
   if (user) {
@@ -78,8 +79,9 @@ export const Login: React.FC = () => {
         description: "Welcome back to Borrowly.in Admin!",
       });
     } catch (error: any) {
-      // Error is already set in the context, so we don't need to show toast here
-      // The error will be displayed in the UI below
+      if (error.code === 'ACCOUNT_DISABLED') {
+        setAccountDisabled(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -342,6 +344,31 @@ export const Login: React.FC = () => {
           </form>       
         </motion.div>
       </div>
+
+      {/* Account Disabled Dialog */}
+      <Dialog open={accountDisabled} onOpenChange={setAccountDisabled}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-center">
+            <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <Lock className="w-8 h-8 text-red-600" />
+            </div>
+            <DialogTitle className="text-xl font-semibold text-red-600">
+              Account Disabled
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 mt-2">
+              Your admin account has been temporarily disabled. Please contact the system administrator to reactivate your account.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-center">
+            <Button 
+              onClick={() => setAccountDisabled(false)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Understood
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Forgot Password Dialog */}
       <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>

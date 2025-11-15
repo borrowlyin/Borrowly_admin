@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Eye, ArrowLeft, Image, FileText, ExternalLink, Loader2, RefreshCw, User, Shield } from "lucide-react";
-import { API_ENDPOINTS, apiRequest } from "@/lib/api";
+import { API_ENDPOINTS, apiRequest, API_BASE_URL } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
@@ -20,6 +20,7 @@ const fetchSignedUrl = async (documentUrl) => {
     const data = await res.json();
     return data.signedUrls?.[0] ?? null;
   } catch (error) {
+    console.error('Document fetch error:', error);
     toast({
       title: "Error",
       description: "Failed to load document.",
