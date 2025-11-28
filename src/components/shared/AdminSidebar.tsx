@@ -77,7 +77,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
                  rounded-2xl shadow-2xl z-40 flex flex-col"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200/40 dark:border-gray-700/40">
+      <div className="flex items-center justify-between p-4 border-b border-gray-400 dark:border-gray-600">
         {!collapsed && (
           <div className="flex items-center space-x-2">
             <img src="/Images/CompanyLogo.jpeg" alt="Logo" className="w-10 h-10 rounded-full" />

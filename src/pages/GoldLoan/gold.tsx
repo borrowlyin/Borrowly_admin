@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Info, Loader2, ArrowLeft, FileText, RefreshCw, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { Info, Loader2, ArrowLeft, FileText, RefreshCw, Download, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -41,6 +41,10 @@ const GoldTable: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   const [selectedLoan, setSelectedLoan] = useState<any | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
@@ -73,9 +77,14 @@ const GoldTable: React.FC = () => {
     email_address: "Email Address",
   };
 
-  const formatKey = (key: string) =>
-    fieldLabelMap[key] ||
-    key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const formatKey = (key: string) => {
+    if (key === "aadhar_card_url_front") return "AADHAR FRONT";
+    if (key === "aadhar_card_url_back") return "AADHAR BACK";
+    if (key === "pan_card_url") return "PAN";
+    if (key === "bankstatement_url") return "BANKSTATEMENT";
+    return fieldLabelMap[key] ||
+      key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   const personalDetailsKeys = [
     "full_name",
@@ -84,7 +93,7 @@ const GoldTable: React.FC = () => {
     "created_at",
   ];
 
-  const documentsKeys = ["pan_card_url", "aadhar_card_url", "bankstatement_url"];
+  const documentsKeys = ["pan_card_url", "aadhar_card_url_front", "aadhar_card_url_back", "bankstatement_url"];
 
   const excludedKeys = [
     ...personalDetailsKeys,
@@ -529,6 +538,15 @@ const GoldTable: React.FC = () => {
                 <SelectItem value="cancel">Cancel</SelectItem>
               </SelectContent>
             </Select>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowDateModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+            </Button>
+            
             <div>
               <Button
                 onClick={openDownloadModal}
@@ -881,7 +899,14 @@ const GoldTable: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {documentsKeys.map((key, idx) => {
-                    const value = selectedLoan[key];
+                    let value;
+                    if (key === "aadhar_card_url_front") {
+                      value = selectedLoan.aadhar_card_url?.front;
+                    } else if (key === "aadhar_card_url_back") {
+                      value = selectedLoan.aadhar_card_url?.back;
+                    } else {
+                      value = selectedLoan[key];
+                    }
                     const isUploaded = Boolean(value);
                     return (
                       <div
@@ -941,7 +966,16 @@ const GoldTable: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    loans.map((loan) => (
+                    loans
+                      .filter((loan) => {
+                        if (dateFilter.from || dateFilter.to) {
+                          const loanDate = new Date(loan.created_at);
+                          if (dateFilter.from && loanDate < new Date(dateFilter.from)) return false;
+                          if (dateFilter.to && loanDate > new Date(dateFilter.to + "T23:59:59")) return false;
+                        }
+                        return true;
+                      })
+                      .map((loan) => (
                       <tr key={loan.id} className="hover:bg-gray-50 transition-colors">
                         <td className="p-3">{loan.fullname || "-"}</td>
                         <td className="p-3">{loan.mobile || "-"}</td>
@@ -1050,6 +1084,56 @@ const GoldTable: React.FC = () => {
                 Failed to load the document. It may be restricted or unavailable.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Date Filter Modal */}
+      {showDateModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg w-96">
+            <h3 className="text-lg font-semibold mb-4">Filter by Date</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">From Date</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">To Date</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDateModal(false);
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setDateFilter({ from: fromDate, to: toDate });
+                  setShowDateModal(false);
+                  setPage(1);
+                }}
+              >
+                Apply Filter
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { ChevronsUpDown, Check, RefreshCw, FileText, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronsUpDown, Check, RefreshCw, FileText, Download, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
@@ -59,6 +59,8 @@ const PersonalTable: React.FC = () => {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [docLoadError, setDocLoadError] = useState(false);
   const [rejectionModal, setRejectionModal] = useState<{ isOpen: boolean; bankName: string; reason: string }>({ isOpen: false, bankName: '', reason: '' });
+  const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [showDateModal, setShowDateModal] = useState(false);
 
 
   const fetchLoanDetails = async (id: string) => {
@@ -131,12 +133,20 @@ const PersonalTable: React.FC = () => {
     reason: "Reason",
   };
 
-  const formatKey = (k: string) => fieldLabelMap[k] ?? k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const formatKey = (k: string) => {
+    if (k === "adharurl_front") return "AADHAR FRONT";
+    if (k === "adharurl_back") return "AADHAR BACK";
+    if (k === "panurl") return "PAN";
+    if (k === "bankstatement_url") return "BANKSTATEMENT";
+    if (k === "payslip_url") return "PAYSLIP";
+    return fieldLabelMap[k] ?? k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   // Document fields for personal loans
   const documentsKeys = [
     "panurl",
-    "adharurl",
+    "adharurl_front",
+    "adharurl_back", 
     "bankstatement_url",
     "payslip_url"
   ];
@@ -281,7 +291,6 @@ const PersonalTable: React.FC = () => {
     await handleDownload(modalStartDate || undefined, modalEndDate || undefined);
   };
   const filteredLoans = loans.filter((loan) => {
-
     const statusMatch = statusFilter === "all" || loan.status === statusFilter;
 
     const searchLower = search.toLowerCase();
@@ -290,7 +299,22 @@ const PersonalTable: React.FC = () => {
       loan.mobile?.toLowerCase().includes(searchLower) ||
       loan.email?.toLowerCase().includes(searchLower);
 
-    return statusMatch && (!search || searchMatch);
+    // Date filter
+    let dateMatch = true;
+    if (dateFilter.from || dateFilter.to) {
+      const loanDate = new Date(loan.created_at || '');
+      if (dateFilter.from) {
+        const fromDate = new Date(dateFilter.from);
+        dateMatch = dateMatch && loanDate >= fromDate;
+      }
+      if (dateFilter.to) {
+        const toDate = new Date(dateFilter.to);
+        toDate.setHours(23, 59, 59, 999); // Include the entire end date
+        dateMatch = dateMatch && loanDate <= toDate;
+      }
+    }
+
+    return statusMatch && (!search || searchMatch) && dateMatch;
   });
   const [banks, setBanks] = useState<{ id: string; bank_name: string }[]>([]);
   const [banksLoading, setBanksLoading] = useState(false);
@@ -487,6 +511,17 @@ const PersonalTable: React.FC = () => {
               </SelectContent>
             </Select>
 
+            {/* Calendar Filter Button */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowDateModal(true)}
+              title="Filter by date"
+              className={dateFilter.from || dateFilter.to ? "bg-blue-50 border-blue-300" : ""}
+            >
+              <Calendar className="w-4 h-4" />
+            </Button>
+
             {/* Download button — now opens modal */}
             <div>
               <Button
@@ -503,6 +538,69 @@ const PersonalTable: React.FC = () => {
                   "Download"
                 )}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date Filter Modal */}
+      {showDateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowDateModal(false)}
+            aria-hidden
+          />
+          <div className="relative bg-white rounded-lg shadow-lg w-[95%] max-w-md p-5 z-10">
+            <h3 className="text-lg font-semibold mb-3">Filter by Date</h3>
+            <p className="text-sm text-gray-600 mb-4">Select date range to filter loans by submitted date.</p>
+
+            <div className="grid gap-3">
+              <label className="text-xs text-gray-700">
+                From date
+                <input
+                  type="date"
+                  value={dateFilter.from}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-700">
+                To date
+                <input
+                  type="date"
+                  value={dateFilter.to}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-between gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDateFilter({ from: '', to: '' });
+                  setPage(1);
+                }}
+                disabled={!dateFilter.from && !dateFilter.to}
+              >
+                Clear Filter
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowDateModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPage(1);
+                    setShowDateModal(false);
+                  }}
+                >
+                  Apply Filter
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -815,7 +913,14 @@ const PersonalTable: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {documentsKeys.map((key, idx) => {
-                    const value = selectedLoan[key];
+                    let value;
+                    if (key === "adharurl_front") {
+                      value = selectedLoan.adharurl?.front;
+                    } else if (key === "adharurl_back") {
+                      value = selectedLoan.adharurl?.back;
+                    } else {
+                      value = selectedLoan[key];
+                    }
                     const isUploaded = Boolean(value);
                     return (
                       <div

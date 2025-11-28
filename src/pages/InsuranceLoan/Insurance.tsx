@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Loader2, ArrowLeft, RefreshCw, FileText, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw, FileText, Download, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -56,13 +56,18 @@ const fieldLabelMap: Record<string, string> = {
   created_at: "Created On",
 };
 
-const formatKey = (key: string) =>
-  fieldLabelMap[key] || key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const formatKey = (key: string) => {
+  if (key === "aadhaar_url_front") return "AADHAR FRONT";
+  if (key === "aadhaar_url_back") return "AADHAR BACK";
+  if (key === "pan_url") return "PAN";
+  return fieldLabelMap[key] || key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 // Document fields for insurance loans
 const documentsKeys = [
   "pan_url",
-  "aadhaar_url"
+  "aadhaar_url_front",
+  "aadhaar_url_back"
 ];
 
 // Signed URL helper
@@ -94,6 +99,10 @@ const InsuranceTable: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
   const [assignedBanks, setAssignedBanks] = useState([]);
@@ -600,6 +609,15 @@ const InsuranceTable: React.FC = () => {
                 <SelectItem value="cancel">Cancel</SelectItem>
               </SelectContent>
             </Select>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowDateModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+            </Button>
+            
             <div>
               <Button
                 onClick={openDownloadModal}
@@ -893,7 +911,7 @@ const InsuranceTable: React.FC = () => {
                   {Object.entries(selectedLoan)
                     .filter(([k, v]) => {
                       const excludeFields = ["id", "created_at", "updated_at", "generateduserid", "generated_user_id", "panurl", "adharurl", "pan_card_url", "aadhar_card_url", "pan_url", "aadhaar_url"];
-                      const isUrl = typeof v === "string" && (v.includes("storage.googleapis.com") || v.startsWith("http"));
+                      const isUrl = typeof v === "string" && (v.includes("storage.googleapis.com") || v.includes("vault.borrowly.in") || v.startsWith("http"));
                       return !excludeFields.includes(k) && !isUrl && v != null && v !== "" && typeof v !== "object";
                     })
                     .map(([k, v]) => (
@@ -918,7 +936,14 @@ const InsuranceTable: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {documentsKeys.map((key, idx) => {
-                    const value = selectedLoan[key];
+                    let value;
+                    if (key === "aadhaar_url_front") {
+                      value = selectedLoan.aadhaar_url?.front;
+                    } else if (key === "aadhaar_url_back") {
+                      value = selectedLoan.aadhaar_url?.back;
+                    } else {
+                      value = selectedLoan[key];
+                    }
                     const isUploaded = Boolean(value);
                     return (
                       <div
@@ -974,7 +999,17 @@ const InsuranceTable: React.FC = () => {
             </thead>
 
             <tbody>
-              {loans.map((loan, i) => (
+              {loans
+                .filter((loan) => {
+                  let dateMatch = true;
+                  if (dateFilter.from || dateFilter.to) {
+                    const loanDate = new Date(loan.created_at || '');
+                    if (dateFilter.from && loanDate < new Date(dateFilter.from)) dateMatch = false;
+                    if (dateFilter.to && loanDate > new Date(dateFilter.to + "T23:59:59")) dateMatch = false;
+                  }
+                  return dateMatch;
+                })
+                .map((loan, i) => (
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.fullname ?? loan.full_name ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.mobile ?? loan.contact_number ?? "-"}</td>
@@ -1087,6 +1122,56 @@ const InsuranceTable: React.FC = () => {
                 Failed to load the document. It may be restricted or unavailable.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Date Filter Modal */}
+      {showDateModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg w-96">
+            <h3 className="text-lg font-semibold mb-4">Filter by Date</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">From Date</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">To Date</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDateModal(false);
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setDateFilter({ from: fromDate, to: toDate });
+                  setShowDateModal(false);
+                  setPage(1);
+                }}
+              >
+                Apply Filter
+              </Button>
+            </div>
           </div>
         </div>
       )}

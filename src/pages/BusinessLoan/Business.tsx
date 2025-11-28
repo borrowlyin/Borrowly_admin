@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
-import { Loader2, ArrowLeft, RefreshCw, FileText, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { Loader2, ArrowLeft, RefreshCw, FileText, Download, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -53,8 +53,19 @@ const fieldLabelMap: Record<string, string> = {
   reason: "Reason",
 };
 
-const formatKey = (key: string) =>
-  fieldLabelMap[key] || key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const formatKey = (key: string) => {
+  if (key === "adharurl_front") return "AADHAR FRONT";
+  if (key === "adharurl_back") return "AADHAR BACK";
+  if (key === "pan_url") return "PAN";
+  if (key === "bankstatement_url") return "BANKSTATEMENT";
+  if (key === "payslip_url") return "PAYSLIP";
+  if (key === "income_documents_itr") return "2 YEAR'S ITR";
+  if (key === "income_documents_msme") return "2 YEAR'S MSME";
+  if (key === "income_documents_gst") return "GST CERTIFICATE";
+  if (key === "income_documents_tax_returns") return "INCOME TAX RETURNS";
+  if (key === "income_documents_udyam") return "UDYAM REGISTRATION";
+  return fieldLabelMap[key] || key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 const formatDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
@@ -62,9 +73,15 @@ const formatDate = (d?: string) =>
 // Document fields for business loans
 const documentsKeys = [
   "pan_url",
-  "aadhaar_url",
+  "adharurl_front",
+  "adharurl_back",
   "bankstatement_url",
-  "payslip_url"
+  "payslip_url",
+  "income_documents_itr",
+  "income_documents_msme",
+  "income_documents_gst",
+  "income_documents_tax_returns",
+  "income_documents_udyam"
 ];
 
 // Signed URL helper
@@ -95,6 +112,10 @@ const BusinessTable: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [viewingLoanId, setViewingLoanId] = useState<string | null>(null);
@@ -291,7 +312,15 @@ const BusinessTable: React.FC = () => {
     const phone = (loan.contact_number ?? loan.mobile ?? loan.phone ?? "").toLowerCase();
     const matchesSearch = search ? name.includes(search.toLowerCase()) || phone.includes(search.toLowerCase()) : true;
     const matchesStatus = statusFilter === "all" ? true : (loan.status ?? "pending").toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
+    
+    let dateMatch = true;
+    if (dateFilter.from || dateFilter.to) {
+      const loanDate = new Date(loan.created_at || '');
+      if (dateFilter.from && loanDate < new Date(dateFilter.from)) dateMatch = false;
+      if (dateFilter.to && loanDate > new Date(dateFilter.to + "T23:59:59")) dateMatch = false;
+    }
+    
+    return matchesSearch && matchesStatus && dateMatch;
   });
 
 
@@ -490,6 +519,15 @@ const BusinessTable: React.FC = () => {
                 <SelectItem value="cancel">Cancel</SelectItem>
               </SelectContent>
             </Select>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowDateModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+            </Button>
+            
             <div>
               <Button
                 onClick={openDownloadModal}
@@ -805,7 +843,24 @@ const BusinessTable: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {documentsKeys.map((key, idx) => {
-                    const value = selectedLoan[key];
+                    let value;
+                    if (key === "adharurl_front") {
+                      value = selectedLoan.adharurl?.front;
+                    } else if (key === "adharurl_back") {
+                      value = selectedLoan.adharurl?.back;
+                    } else if (key === "income_documents_itr") {
+                      value = selectedLoan.income_documents?.["2 YEAR'S ITR"];
+                    } else if (key === "income_documents_msme") {
+                      value = selectedLoan.income_documents?.["2 YEAR'S MSME"];
+                    } else if (key === "income_documents_gst") {
+                      value = selectedLoan.income_documents?.["GST CERTIFICATE"];
+                    } else if (key === "income_documents_tax_returns") {
+                      value = selectedLoan.income_documents?.["INCOME TAX RETURNS OF 2 YEAR'S"];
+                    } else if (key === "income_documents_udyam") {
+                      value = selectedLoan.income_documents?.["UDYAM REGISTRATION"];
+                    } else {
+                      value = selectedLoan[key];
+                    }
                     const isUploaded = Boolean(value);
                     return (
                       <div
@@ -994,6 +1049,56 @@ const BusinessTable: React.FC = () => {
                 Failed to load the document. It may be restricted or unavailable.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Date Filter Modal */}
+      {showDateModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg w-96">
+            <h3 className="text-lg font-semibold mb-4">Filter by Date</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">From Date</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">To Date</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDateModal(false);
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setDateFilter({ from: fromDate, to: toDate });
+                  setShowDateModal(false);
+                  setPage(1);
+                }}
+              >
+                Apply Filter
+              </Button>
+            </div>
           </div>
         </div>
       )}

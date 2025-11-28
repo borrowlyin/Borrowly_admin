@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Info, Loader2, ArrowLeft, FileText, RefreshCw, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { Info, Loader2, ArrowLeft, FileText, RefreshCw, Download, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -51,6 +51,8 @@ const VehicleTable: React.FC = () => {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [docLoadError, setDocLoadError] = useState(false);
   const [documentLoading, setDocumentLoading] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [showDateModal, setShowDateModal] = useState(false);
   // ----------- Field Label Map (kept as in your original) -----------
   const fieldLabelMap: Record<string, string> = {
     fullname: "Applicant Full Name",
@@ -93,9 +95,21 @@ const VehicleTable: React.FC = () => {
     coapplicantpancard: "Co-applicant PAN Card",
   };
 
-  const formatKey = (key: string) =>
-    fieldLabelMap[key.toLowerCase()] ||
-    key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const formatKey = (key: string) => {
+    if (key === "applicantaadhaardcard_front") return "AADHAR FRONT";
+    if (key === "applicantaadhaardcard_back") return "AADHAR BACK";
+    if (key === "applicantpancard") return "PAN";
+    if (key === "recentbankstatement") return "BANKSTATEMENT";
+    if (key === "applicantphoto") return "PHOTO";
+    if (key === "cancelledcheque") return "CANCELLED CHEQUE";
+    if (key === "proformainvoice") return "PROFORMA INVOICE";
+    if (key === "salaryslips") return "SALARY SLIPS";
+    if (key === "coapplicantincomeproof") return "CO-APPLICANT INCOME PROOF";
+    if (key === "coapplicantaadhaardcard") return "CO-APPLICANT AADHAR";
+    if (key === "coapplicantpancard") return "CO-APPLICANT PAN";
+    return fieldLabelMap[key.toLowerCase()] ||
+      key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   const personalDetailsKeys = [
     "fullname",
@@ -120,7 +134,8 @@ const VehicleTable: React.FC = () => {
   ];
 
   const documentsKeys = [
-    "applicantaadhaardcard",
+    "applicantaadhaardcard_front",
+    "applicantaadhaardcard_back",
     "applicantpancard",
     "applicantphoto",
     "cancelledcheque",
@@ -381,7 +396,23 @@ const VehicleTable: React.FC = () => {
   const filteredLoans = loans.filter((loan) => {
     const matchesSearch = loan.full_name?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || (loan.status || "pending").toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
+    
+    // Date filter
+    let dateMatch = true;
+    if (dateFilter.from || dateFilter.to) {
+      const loanDate = new Date(loan.created_at || '');
+      if (dateFilter.from) {
+        const fromDate = new Date(dateFilter.from);
+        dateMatch = dateMatch && loanDate >= fromDate;
+      }
+      if (dateFilter.to) {
+        const toDate = new Date(dateFilter.to);
+        toDate.setHours(23, 59, 59, 999); // Include the entire end date
+        dateMatch = dateMatch && loanDate <= toDate;
+      }
+    }
+    
+    return matchesSearch && matchesStatus && dateMatch;
   });
   // ------------- UI Rendering -------------
 
@@ -579,6 +610,16 @@ const VehicleTable: React.FC = () => {
               </SelectContent>
             </Select>
 
+            {/* Calendar Filter Button */}
+            <Button
+              variant="outline"
+              onClick={() => setShowDateModal(true)}
+              title="Filter by date"
+              className={`w-12 h-10 ${dateFilter.from || dateFilter.to ? "bg-blue-50 border-blue-300" : ""}`}
+            >
+              <Calendar className="w-4 h-4" />
+            </Button>
+
             <div>
               <Button
                 onClick={openDownloadModal}
@@ -599,6 +640,69 @@ const VehicleTable: React.FC = () => {
         </div>
       )}
 
+
+      {/* Date Filter Modal */}
+      {showDateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowDateModal(false)}
+            aria-hidden
+          />
+          <div className="relative bg-white rounded-lg shadow-lg w-[95%] max-w-md p-5 z-10">
+            <h3 className="text-lg font-semibold mb-3">Filter by Date</h3>
+            <p className="text-sm text-gray-600 mb-4">Select date range to filter loans by submitted date.</p>
+
+            <div className="grid gap-3">
+              <label className="text-xs text-gray-700">
+                From date
+                <input
+                  type="date"
+                  value={dateFilter.from}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-700">
+                To date
+                <input
+                  type="date"
+                  value={dateFilter.to}
+                  onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
+                  className="mt-1 w-full border px-2 py-1 rounded text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-between gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDateFilter({ from: '', to: '' });
+                  setPage(1);
+                }}
+                disabled={!dateFilter.from && !dateFilter.to}
+              >
+                Clear Filter
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowDateModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPage(1);
+                    setShowDateModal(false);
+                  }}
+                >
+                  Apply Filter
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDownloadModal && (
         // overlay
@@ -946,7 +1050,14 @@ const VehicleTable: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {documentsKeys.map((key, idx) => {
-                    const value = selectedLoan[key];
+                    let value;
+                    if (key === "applicantaadhaardcard_front") {
+                      value = selectedLoan.applicantaadhaardcard?.front;
+                    } else if (key === "applicantaadhaardcard_back") {
+                      value = selectedLoan.applicantaadhaardcard?.back;
+                    } else {
+                      value = selectedLoan[key];
+                    }
                     const isUploaded = Boolean(value);
 
                     return (
@@ -964,14 +1075,25 @@ const VehicleTable: React.FC = () => {
                         {isUploaded ? (
                           <button
                             onClick={async () => {
-                              setDocumentLoading(key);
                               const signed = await fetchSignedUrl(value);
                               if (signed) {
-                                setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
-                                setZoomLevel(100);
-                                setDocLoadError(false);
+                                try {
+                                  const testResponse = await fetch(signed, { method: 'HEAD' });
+                                  if (testResponse.ok) {
+                                    setDocumentModal({ isOpen: true, url: signed, title: formatKey(key) });
+                                    setZoomLevel(100);
+                                    setDocLoadError(false);
+                                  } else {
+                                    throw new Error('File not found');
+                                  }
+                                } catch (error) {
+                                  toast({
+                                    title: "Document Not Available",
+                                    description: `The ${formatKey(key)} file was not found in storage.`,
+                                    variant: "destructive",
+                                  });
+                                }
                               }
-                              setDocumentLoading(null);
                             }}
                             disabled={documentLoading === key}
                             className="text-blue-600 text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"

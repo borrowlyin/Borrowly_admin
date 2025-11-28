@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Info, Loader2, ArrowLeft, FileText, RefreshCw, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { Info, Loader2, ArrowLeft, FileText, RefreshCw, Download, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -40,6 +40,10 @@ const EducationTable: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   
   // Use cached data
   const { loans, loading, total, totalPages, isRefreshing, lastUpdated, refetch } = useEducationLoanCache(page, search, statusFilter);
@@ -85,16 +89,27 @@ const EducationTable: React.FC = () => {
     incomeproofdoc: "Income Proof",
   };
 
-  const formatKey = (key: string) =>
-    fieldLabelMap[key.toLowerCase()] ||
-    key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const formatKey = (key: string) => {
+    if (key === "aadharcard_front") return "AADHAR FRONT";
+    if (key === "aadharcard_back") return "AADHAR BACK";
+    if (key === "studentpassportdoc") return "STUDENT PASSPORT";
+    if (key === "studentvisadoc") return "STUDENT VISA";
+    if (key === "admissionletterdoc") return "ADMISSION LETTER";
+    if (key === "feestructuredoc") return "FEE STRUCTURE";
+    if (key === "academicrecordsdoc") return "ACADEMIC RECORDS";
+    if (key === "coapplicantpandoc") return "CO-APPLICANT PAN";
+    if (key === "coapplicantaadhardoc") return "CO-APPLICANT AADHAR";
+    if (key === "incomeproofdoc") return "INCOME PROOF";
+    return fieldLabelMap[key.toLowerCase()] ||
+      key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   const personalDetailsKeys = [
     "studentfullname",
     "mobile",
     "email",
     "passportnumber",
-    "pannumber",
+    "pancard",
     "currentaddress",
     "permanentaddress",
     "emergencycontact",
@@ -112,6 +127,8 @@ const EducationTable: React.FC = () => {
   ];
 
   const documentsKeys = [
+    "aadharcard_front",
+    "aadharcard_back",
     "studentpassportdoc",
     "studentvisadoc",
     "admissionletterdoc",
@@ -136,6 +153,10 @@ const EducationTable: React.FC = () => {
     "id",
     "createdat",
     "updatedat",
+    "aadharcard",
+    "generatedUserId",
+    "ord_id",
+    "payment_status",
   ];
 
   // ------------- Format date helper -------------
@@ -564,7 +585,13 @@ const EducationTable: React.FC = () => {
               </SelectContent>
             </Select>
             
-
+            <Button
+              variant="outline"
+              onClick={() => setShowDateModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+            </Button>
             
             <div>
               <Button
@@ -906,7 +933,14 @@ const EducationTable: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {documentsKeys.map((key, idx) => {
-                    const value = selectedLoan[key];
+                    let value;
+                    if (key === "aadharcard_front") {
+                      value = selectedLoan.aadharcard?.front;
+                    } else if (key === "aadharcard_back") {
+                      value = selectedLoan.aadharcard?.back;
+                    } else {
+                      value = selectedLoan[key];
+                    }
                     const isUploaded = Boolean(value);
 
                     return (
@@ -971,6 +1005,11 @@ const EducationTable: React.FC = () => {
                         if (statusFilter !== "all" && (loan.status?.toLowerCase() || "") !== statusFilter.toLowerCase()) {
                           return false;
                         }
+                        if (dateFilter.from || dateFilter.to) {
+                          const loanDate = new Date(loan.created_at);
+                          if (dateFilter.from && loanDate < new Date(dateFilter.from)) return false;
+                          if (dateFilter.to && loanDate > new Date(dateFilter.to + "T23:59:59")) return false;
+                        }
                         if (!search) return true;
                         const s = search.toLowerCase();
                         return (
@@ -1001,7 +1040,7 @@ const EducationTable: React.FC = () => {
                               {((loan.status || "pending").charAt(0).toUpperCase() + (loan.status || "pending").slice(1))}
                             </span>
                           </td>
-                          <td className="p-3">{formatDate(loan.createdAt)}</td>
+                          <td className="px-4 py-3 border">{formatDate(loan.created_at)}</td>
                           <td className="p-3 border-b text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
                             <span onClick={() => fetchLoanDetails(loan.id)}>View</span>
                           </td>
@@ -1084,6 +1123,56 @@ const EducationTable: React.FC = () => {
                 Failed to load the document. It may be restricted or unavailable.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Date Filter Modal */}
+      {showDateModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg w-96">
+            <h3 className="text-lg font-semibold mb-4">Filter by Date</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">From Date</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">To Date</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDateModal(false);
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setDateFilter({ from: fromDate, to: toDate });
+                  setShowDateModal(false);
+                  setPage(1);
+                }}
+              >
+                Apply Filter
+              </Button>
+            </div>
           </div>
         </div>
       )}
