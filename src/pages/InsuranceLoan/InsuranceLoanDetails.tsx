@@ -93,7 +93,7 @@ const InsuranceLoanDetails: React.FC = () => {
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
         <h1 className="text-2xl font-semibold text-gray-800">
-          Insurance Loan Details
+          Insurance Details
         </h1>
       </div>
 

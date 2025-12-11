@@ -548,7 +548,7 @@ const InsuranceTable: React.FC = () => {
       transition={{ duration: 0.25 }}
     >
       <div>
-        <h1 className="text-3xl font-bold mb-2">Insurance Loan Applications</h1>
+        <h1 className="text-3xl font-bold mb-2">Insurance Applications</h1>
         <p className="mb-6 text-gray-500 text-[14px]">
           Manage insurance-related loan submissions. Review, verify and update statuses.
         </p>
