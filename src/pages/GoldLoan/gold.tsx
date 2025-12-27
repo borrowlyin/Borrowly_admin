@@ -893,7 +893,15 @@ const GoldTable: React.FC = () => {
                 <div className="flex justify-between items-center border-b pb-3 mb-4">
                   <h2 className="text-lg font-semibold text-blue-700">Uploaded Documents</h2>
                   <span className="text-sm text-gray-500">
-                    {`${documentsKeys.filter(k => selectedLoan[k]).length} / ${documentsKeys.length} Uploaded`}
+                    {`${documentsKeys.filter(k => {
+                      if (k === "aadhar_card_url_front") {
+                        return Boolean(selectedLoan.aadhar_card_url?.front);
+                      } else if (k === "aadhar_card_url_back") {
+                        return Boolean(selectedLoan.aadhar_card_url?.back);
+                      } else {
+                        return Boolean(selectedLoan[k]);
+                      }
+                    }).length} / ${documentsKeys.length} Uploaded`}
                   </span>
                 </div>
 

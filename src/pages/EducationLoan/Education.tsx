@@ -928,7 +928,15 @@ const EducationTable: React.FC = () => {
               <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 <div className="flex justify-between items-center border-b pb-3 mb-4">
                   <h2 className="text-lg font-semibold text-blue-700">Uploaded Documents</h2>
-                  <span className="text-sm text-gray-500">{`${documentsKeys.filter(k => selectedLoan[k]).length} / ${documentsKeys.length} Uploaded`}</span>
+                  <span className="text-sm text-gray-500">{`${documentsKeys.filter(k => {
+                    if (k === "aadharcard_front") {
+                      return Boolean(selectedLoan.aadharcard?.front);
+                    } else if (k === "aadharcard_back") {
+                      return Boolean(selectedLoan.aadharcard?.back);
+                    } else {
+                      return Boolean(selectedLoan[k]);
+                    }
+                  }).length} / ${documentsKeys.length} Uploaded`}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
