@@ -121,8 +121,19 @@ const PersonalTable: React.FC = () => {
     }
   };
 
-  const formatDate = (date?: string) =>
-    date ? new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
+  const formatDate = (date?: string) => {
+    if (!date) return "-";
+    
+    // Parse the UTC date and format it consistently
+    const utcDate = new Date(date);
+    
+    // Format using UTC methods to avoid timezone conversion
+    const day = utcDate.getUTCDate().toString().padStart(2, '0');
+    const month = utcDate.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+    const year = utcDate.getUTCFullYear();
+    
+    return `${day} ${month} ${year}`;
+  };
 
   const fieldLabelMap: Record<string, string> = {
     fullname: "Full Name",
