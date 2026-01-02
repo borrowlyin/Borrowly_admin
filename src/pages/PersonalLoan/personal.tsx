@@ -518,7 +518,7 @@ const PersonalTable: React.FC = () => {
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="cancel">Cancel</SelectItem>
+                <SelectItem value="cancel">User Cancelled</SelectItem>
               </SelectContent>
             </Select>
 
@@ -995,7 +995,7 @@ const PersonalTable: React.FC = () => {
             </thead>
 
             <tbody>
-              {filteredLoans.map((loan, i) => (
+              {loans.map((loan, i) => (
                 <tr key={loan.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-3 border">{loan.fullname ?? "-"}</td>
                   <td className="px-4 py-3 border">{loan.mobile ?? "-"}</td>

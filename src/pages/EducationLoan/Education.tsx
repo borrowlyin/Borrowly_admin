@@ -581,7 +581,7 @@ const EducationTable: React.FC = () => {
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="cancel">Cancel</SelectItem>
+                <SelectItem value="cancel">User Cancelled</SelectItem>
               </SelectContent>
             </Select>
             
