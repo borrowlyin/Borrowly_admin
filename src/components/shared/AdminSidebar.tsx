@@ -64,6 +64,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle 
     { name: "Home Loans", href: "/HomeTable", icon: Home },
     { name: "Insurance", href: "/InsuranceTable", icon: ShieldCheck },
     { name: "Education Loans", href: "/EducationTable", icon: GraduationCap },
+    { name: "Customer Leads", href: "/CustomerOTPTable", icon: ShieldCheck },
   ];
 
 
