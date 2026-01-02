@@ -153,14 +153,22 @@ const PersonalTable: React.FC = () => {
     return fieldLabelMap[k] ?? k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  // Document fields for personal loans
-  const documentsKeys = [
-    "panurl",
-    "adharurl_front",
-    "adharurl_back", 
-    "bankstatement_url",
-    "payslip_url"
-  ];
+  // Get documents based on employment type
+  const getDocumentsByEmploymentType = (employmentType: string) => {
+    const commonDocs = [
+      "panurl",
+      "adharurl_front",
+      "adharurl_back", 
+      "bankstatement_url"
+    ];
+
+    const empType = employmentType?.toLowerCase().trim();
+    if (empType === "salaried") {
+      return [...commonDocs, "payslip_url"];
+    }
+    
+    return commonDocs;
+  };
 
   // Signed URL helper
   const fetchSignedUrl = async (documentUrl: string) => {
@@ -918,20 +926,24 @@ const PersonalTable: React.FC = () => {
                 <div className="flex justify-between items-center border-b pb-3 mb-4">
                   <h2 className="text-lg font-semibold text-blue-700">Uploaded Documents</h2>
                   <span className="text-sm text-gray-500">
-                    {`${documentsKeys.filter(k => {
-                      if (k === "adharurl_front") {
-                        return Boolean(selectedLoan.adharurl?.front);
-                      } else if (k === "adharurl_back") {
-                        return Boolean(selectedLoan.adharurl?.back);
-                      } else {
-                        return Boolean(selectedLoan[k]);
-                      }
-                    }).length} / ${documentsKeys.length} Uploaded`}
+                    {(() => {
+                      const docs = getDocumentsByEmploymentType(selectedLoan.employmenttype || "");
+                      const uploadedCount = docs.filter(k => {
+                        if (k === "adharurl_front") {
+                          return Boolean(selectedLoan.adharurl?.front);
+                        } else if (k === "adharurl_back") {
+                          return Boolean(selectedLoan.adharurl?.back);
+                        } else {
+                          return Boolean(selectedLoan[k]);
+                        }
+                      }).length;
+                      return `${uploadedCount} / ${docs.length} Uploaded`;
+                    })()} 
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {documentsKeys.map((key, idx) => {
+                  {getDocumentsByEmploymentType(selectedLoan.employmenttype || "").map((key, idx) => {
                     let value;
                     if (key === "adharurl_front") {
                       value = selectedLoan.adharurl?.front;
