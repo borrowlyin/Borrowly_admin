@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -14,11 +14,12 @@ import { Button } from "@/components/ui/button";
 
 interface OTPRecord {
   id: string;
-  customer_id: string;
-  mobile_number: string;
+  phone: string;
+  email: string | null;
   loan_type: string;
-  date: string;
-  otp_status: "verified";
+  details: string;
+  status: string;
+  updated_at: string;
 }
 
 const CustomerOTPTable: React.FC = () => {
@@ -30,38 +31,38 @@ const CustomerOTPTable: React.FC = () => {
   const [toDate, setToDate] = useState("");
   const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   
-  // Mock data - replace with actual API call later
-  const [loading] = useState(false);
-  const [otpRecords] = useState<OTPRecord[]>([
-    {
-      id: "1",
-      customer_id: "CUST001",
-      mobile_number: "9876543210",
-      loan_type: "Personal Loan",
-      date: "2024-01-15T10:30:00Z",
-      otp_status: "verified"
-    },
-    {
-      id: "2", 
-      customer_id: "CUST002",
-      mobile_number: "9876543211",
-      loan_type: "Vehicle Loan",
-      date: "2024-01-14T14:20:00Z",
-      otp_status: "verified"
-    },
-    {
-      id: "3",
-      customer_id: "CUST003", 
-      mobile_number: "9876543212",
-      loan_type: "Business Loan",
-      date: "2024-01-13T09:15:00Z",
-      otp_status: "verified"
-    }
-  ]);
+  const [loading, setLoading] = useState(false);
+  const [otpRecords, setOtpRecords] = useState<OTPRecord[]>([]);
   
-  const totalPages = 1;
-  const total = otpRecords.length;
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const { toast } = useToast();
+
+  const fetchOTPData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/application_auth/verification_data?page=${page}&limit=10`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch OTP data');
+      }
+      const data = await response.json();
+      setOtpRecords(data.data || []);
+      setTotal(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 1);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch OTP verification data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOTPData();
+  }, [page]);
 
   const formatDate = (date: string) => {
     const utcDate = new Date(date);
@@ -82,8 +83,8 @@ const CustomerOTPTable: React.FC = () => {
     
     if (search.trim()) {
       matches = matches && (
-        record.customer_id.toLowerCase().includes(search.toLowerCase()) ||
-        record.mobile_number.includes(search)
+        record.id.toLowerCase().includes(search.toLowerCase()) ||
+        record.phone.includes(search)
       );
     }
     
@@ -118,7 +119,7 @@ const CustomerOTPTable: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <div className="w-full md:w-2/3 flex gap-3 items-center">
           <Input
-            placeholder="Search by customer ID or mobile..."
+            placeholder="Search by ID or phone..."
             value={search}
             onChange={(e) => {
               setPage(1);
@@ -224,24 +225,26 @@ const CustomerOTPTable: React.FC = () => {
           <table className="min-w-full border rounded-md text-sm">
             <thead className="bg-gray-100 text-left">
               <tr>
-                <th className="px-4 py-3 border">Customer ID</th>
-                <th className="px-4 py-3 border">Mobile Number</th>
+                <th className="px-4 py-3 border">ID</th>
+                <th className="px-4 py-3 border">Phone</th>
                 <th className="px-4 py-3 border">Loan Type</th>
                 <th className="px-4 py-3 border">Date</th>
-                <th className="px-4 py-3 border">OTP Status</th>
+                <th className="px-4 py-3 border">Status</th>
               </tr>
             </thead>
 
             <tbody>
               {filteredRecords.map((record, i) => (
                 <tr key={record.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="px-4 py-3 border font-medium">{record.customer_id}</td>
-                  <td className="px-4 py-3 border">{record.mobile_number}</td>
-                  <td className="px-4 py-3 border">{record.loan_type}</td>
-                  <td className="px-4 py-3 border">{formatDate(record.date)}</td>
+                  <td className="px-4 py-3 border font-medium">{record.id}</td>
+                  <td className="px-4 py-3 border">{record.phone}</td>
+                  <td className="px-4 py-3 border">{record.loan_type.replace('_', ' ')}</td>
+                  <td className="px-4 py-3 border">{formatDate(record.updated_at)}</td>
                   <td className="px-4 py-3 border">
-                    <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                      Verified
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      record.status === 'verifying' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                    }`}>
+                      {record.status}
                     </span>
                   </td>
                 </tr>
