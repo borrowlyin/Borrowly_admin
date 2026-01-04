@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Loader2, Calendar } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 import {
   Select,
   SelectContent,
@@ -41,7 +42,7 @@ const CustomerOTPTable: React.FC = () => {
   const fetchOTPData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/application_auth/verification_data?page=${page}&limit=10`);
+      const response = await fetch(`${API_BASE_URL}/api/application_auth/verification_data?page=${page}&limit=10`);
       if (!response.ok) {
         throw new Error('Failed to fetch OTP data');
       }
