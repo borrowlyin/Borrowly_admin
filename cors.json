@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://www.borrowly.in/","http://localhost:5689","https://borrowly.in","https://admin.borrowly.in", "https://www.admin.borrowly.in/","http://localhost:5173","http://localhost:5688"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "maxAgeSeconds": 3600
+  }
+]
